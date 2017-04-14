@@ -144,7 +144,7 @@ class tangle:
 
 
         self.counter +=1
-        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), tps, ctps,width, avg_c_t])
+        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t])
         self.broadcast_data(self.data[self.counter - 1])
 
 
@@ -184,10 +184,10 @@ class tangle:
 
 
     def broadcast_data(self, data):
-        if self.broadcast_max_tps < data[4]:
-            self.broadcast_max_tps = data[4]
-        if self.broadcast_max_ctps < data[5]:
-            self.broadcast_max_ctps = data[5]
+        if self.broadcast_max_tps < float(data[4]):
+            self.broadcast_max_tps = float(data[4])
+        if self.broadcast_max_ctps < float(data[5]):
+            self.broadcast_max_ctps = float(data[5])
 
         json = {
             'ctps': data[5],
