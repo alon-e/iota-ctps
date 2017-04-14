@@ -69,9 +69,9 @@ class tangle:
                     #read only newer files
                     if self.prev_timestamp < timestamp:
 
-                        hash = f.readline().strip('\n')
-                        trytes = f.readline().strip('\n')
-                        neighbor = f.readline().strip('\n')
+                        hash = f.readline().strip('\r\n')
+                        trytes = f.readline().strip('\r\n')
+                        neighbor = f.readline().strip('\r\n')
 
                         #parse fields
                         tx = transaction(trytes,hash)
