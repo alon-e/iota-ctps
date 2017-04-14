@@ -164,7 +164,6 @@ class tangle:
 
     def mark_milestone_descendants_confirmed(self):
 
-        self.prune_confirmed_transactions()
 
         descendants = []
         for milestone in self.milestones:
@@ -177,7 +176,8 @@ class tangle:
         flatten = list(set(flatten))
         for f in flatten:
             self.graph.node[f]['confirmed'] = True
-        pass
+
+        self.prune_confirmed_transactions()
 
 
     def broadcast_data(self, data):
