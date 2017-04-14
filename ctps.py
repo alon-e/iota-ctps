@@ -15,8 +15,8 @@ class tangle:
 
         self.directory = path
         self.output = './table.out'
-        self.graph = nx.DiGraph()
-        self.resolution = resolution
+        self.graph = nx.MultiDiGraph()
+        self.resolution = int(resolution)
         self.res_ms = self.resolution * 1000
         self.prev_timestamp = 0
 
@@ -25,17 +25,19 @@ class tangle:
         self.data = []
         self.counter = 0
 
-        self.milestones = []
         self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
+        self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
 
     def add_tx_to_tangle(self, tx):
-        if str(tx.address.as_json_compatible()) == self.COOR:
-            self.milestones.append(tx.hash)
 
-        self.graph.add_node(tx.hash, tx=tx)
+        self.graph.add_node(tx.hash, tx=tx, confirmed=False)
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
+        if str(tx.address.as_json_compatible()) == self.COOR:
+            self.graph.node[tx.hash]['confirmed'] = True
+
+            self.mark_descendants_confirmed(tx.hash)
 
 
     def incremental_read(self):
@@ -54,7 +56,6 @@ class tangle:
                     neighbor = f.readline().strip('\n')
 
                     #parse fields
-
                     tx = iota.Transaction.from_tryte_string_and_hash(trytes,hash)
                     #add to graph
                     self.add_tx_to_tangle(tx)
@@ -65,8 +66,7 @@ class tangle:
                         print 'reading',file,'...'
                         self.prev_timestamp = timestamp
                         self.add_stats()
-                # else:
-                #     print 'skipping',file,'...'
+
 
     def print_stats(self):
         table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time']]
@@ -91,17 +91,8 @@ class tangle:
 
         # confirmed tx:
         # count all descendants milestones
-        ancestors = []
-        for milestone in reversed(self.milestones):
-            try:
-                ancestors.append(nx.ancestors(self.graph, milestone))
-            except:
-                print "milestone missing"
-
-        flatten = [item for sublist in ancestors for item in sublist]
-        flatten = list(set(flatten))
-
-        num_ctxs = len(flatten)
+        Cnodes = filter(lambda (n, d): (d.has_key('confirmed') and d['confirmed'] == True), self.graph.nodes(data=True))
+        num_ctxs = len(Cnodes)
 
 
         if self.counter > 0:
@@ -130,6 +121,24 @@ class tangle:
         self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), tps, ctps,width, avg_c_t])
 
         #self.data.append([self.counter * self.resolution, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs/(num_txs*1.0)),tps, ctps, width, avg_c_t])
+
+    def mark_descendants_confirmed(self, hash):
+        successors = self.graph.successors(hash)
+
+        confirmed = 0
+        for s in successors:
+            if self.graph.node[s].has_key('confirmed') and  self.graph.node[s]['confirmed']:
+                confirmed +=1
+        # stopping condition - both branch & trunk are confirmed
+        if hash == self.all_nines or confirmed == 2:
+            self.graph.node[hash]['confirmed'] = True
+            return
+
+        #recurstion reduction
+        for s in successors:
+            self.mark_descendants_confirmed(s)
+
+
 
 def main(path,resolution):
     t = tangle(path,resolution)
