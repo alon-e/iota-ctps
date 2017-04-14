@@ -13,17 +13,21 @@ TIMEOUT = 7
 
 def API(request,auth,url):
 
+    stringified = json.dumps(request)
+    headers = {'content-type': 'application/json', 'Authorization': auth}
+
     try:
-        stringified = json.dumps(request)
-        headers = {'content-type': 'application/json', 'Authorization': 'Basic '+ auth}
         request = urllib2.Request(url=url, data=stringified, headers=headers)
         returnData = urllib2.urlopen(request,timeout=TIMEOUT).read()
-
-        response = json.loads(returnData)
-        return response
     except:
-        print url,"Timeout!"
-        pass
+        print url, "Timeout!"
+        print '\n    ' + repr(sys.exc_info())
+        return
+
+    response = json.loads(returnData)
+    return response
+
+
 
 
 class transaction:
