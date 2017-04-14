@@ -152,13 +152,15 @@ class tangle:
             if self.graph.node[milestone].has_key('confirmed') and self.graph.node[milestone]['confirmed']:
                 milestones_to_remove.append(milestone)
                 to_prune = nx.descendants(self.graph, milestone)
-                self.pruned_tx += len(to_prune)
                 for p in to_prune:
                     tx_to_prune.append(p)
 
         remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
         tx_to_prune_unique = list(set(tx_to_prune))
         remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
+        self.pruned_tx += len(tx_to_prune_unique)
+
+        #print "pruning:",len(tx_to_prune_unique)
 
     def mark_milestone_descendants_confirmed(self):
 
