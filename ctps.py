@@ -96,7 +96,7 @@ class tangle:
                 table_data.append(d)  # created needs +2 for genesis
 
         table = AsciiTable(table_data)
-        print(table.table)
+        #print(table.table)
 
         with open(self.output, 'w+') as f:
             f.write(table.table)
