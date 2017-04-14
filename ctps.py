@@ -16,18 +16,24 @@ class tangle:
     def __init__(self,path):
 
         self.directory = path
+        self.output = './table.out'
         self.API = iota.Iota("http://localhost:24700")
         self.graph = nx.DiGraph()
-        self.resolution = 4
+        self.resolution = 30
         self.res_ms = self.resolution * 1000
         self.prev_timestamp = 0
+        self.prev_print = 0
 
         self.data = []
         self.counter = 0
-        self.milestones = {}
+        self.milestones = []
         self.incremental = False #first iteration - milestone isn't in the graph
+        self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
 
     def add_tx_to_tangle(self, tx):
+        if str(tx.address.as_json_compatible()) == self.COOR:
+            self.milestones.append(tx.hash)
+
         self.graph.add_node(tx.hash, tx=tx)
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
@@ -37,15 +43,13 @@ class tangle:
     def incremental_read(self):
 
         #read files in dir
-        for file in os.listdir(self.directory):
+        for file in sorted(os.listdir(self.directory)):
             # for each file
             with open(self.directory + file) as f:
                 timestamp = int(file.strip('.tx'))
 
                 #read only newer files
-                if self.prev_timestamp < timestamp:
-                    print 'reading',file,'...'
-
+                if self.incremental == False or self.prev_timestamp < timestamp:
 
                     hash = f.readline().strip('\n')
                     trytes = f.readline().strip('\n')
@@ -60,17 +64,23 @@ class tangle:
 
                     #stats:
                     if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
+                        print 'reading',file,'...'
                         self.prev_timestamp = timestamp
                         self.add_stats()
+                # else:
+                #     print 'skipping',file,'...'
         self.incremental = True
 
     def print_stats(self):
         table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time']]
-        for d in self.data:
-            table_data.append(d)  # created needs +2 for genesis
+        for (c,d) in enumerate(self.data):
+            if c>self.prev_print - 10:
+                self.prev_print = c
+                table_data.append(d)  # created needs +2 for genesis
 
         table = AsciiTable(table_data)
-        print(table.table)
+        with open(self.output) as f:
+            f.write(table.table)
 
     def add_stats(self):
 
@@ -89,35 +99,46 @@ class tangle:
         # count all tx in given height
         width = 0
 
-
         #COOR related - need milestone
-        if self.incremental:
+        if self.incremental or True:
 
             # get latest milestone
-            self.milestones[self.getMilestone()] = 1
+            #self.milestones[self.getMilestone()] = 1
 
             # confirmed tx:
             # count all descendants of latestMilestone
             # TODO
-            try:
-                ancestors = [nx.ancestors(self.graph, milestone) for milestone in self.milestones]
-                flatten = [item for sublist in ancestors for item in sublist]
-                flatten = list(set(flatten))
+            ancestors = []
+            for milestone in reversed(self.milestones):
+                try:
+                    ancestors.append(nx.ancestors(self.graph, milestone))
+                except:
+                    print "milestone missing"
 
-                num_ctxs = len(flatten)
-            except:
-                print "milestone missing"
+            flatten = [item for sublist in ancestors for item in sublist]
+            flatten = list(set(flatten))
+
+            num_ctxs = len(flatten)
+
+
 
             if self.counter > 0:
-                # TPS
+                # CTPS
+
                 prev_num_ctx = self.data[self.counter - 1][2]
+
+                if num_ctxs == 0:
+                    num_ctxs = prev_num_ctx
+
                 ctps = (num_ctxs - prev_num_ctx) / (self.resolution * 1.0)
 
             # Average Confirmation Time
             avg_c_t = 0
 
         self.counter +=1
-        self.data.append([self.counter * self.resolution, num_txs, num_ctxs, '{:.0%}'.format(num_ctxs/(num_txs*1.0)),tps, ctps, width, avg_c_t])
+        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), tps, ctps,width, avg_c_t])
+
+        #self.data.append([self.counter * self.resolution, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs/(num_txs*1.0)),tps, ctps, width, avg_c_t])
 
     def getMilestone(self):
         return str(self.API.get_node_info()['latestMilestone'].as_json_compatible())
