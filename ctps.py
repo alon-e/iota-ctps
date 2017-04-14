@@ -181,7 +181,15 @@ class tangle:
 
 
     def broadcast_data(self, data):
-
+        json = {
+            'ctps': data[5],
+            'tps': data[4],
+            'numTxs': data[1],
+            'numCtxs': data[2],
+            'cRate': data[3]
+         }
+        with open('feed.out', 'w+') as f:
+            f.write(str(json))
         pass
 
 
