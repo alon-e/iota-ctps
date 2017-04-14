@@ -44,6 +44,9 @@ class tangle:
 
         self.pruned_tx = 0
 
+        self.broadcast_max_tps = 0
+        self.broadcast_max_ctps = 0
+
     def add_tx_to_tangle(self, tx):
 
         self.graph.add_node(tx.hash, tx=tx, confirmed=False)
@@ -181,13 +184,21 @@ class tangle:
 
 
     def broadcast_data(self, data):
+        if self.broadcast_max_tps < data[4]:
+            self.broadcast_max_tps = data[4]
+        if self.broadcast_max_ctps < data[5]:
+            self.broadcast_max_ctps = data[5]
+
         json = {
             'ctps': data[5],
             'tps': data[4],
             'numTxs': data[1],
             'numCtxs': data[2],
-            'cRate': data[3]
-         }
+            'cRate': data[3],
+            'maxCtps': self.broadcast_max_ctps,
+            'maxTps': self.broadcast_max_tps
+
+        }
         with open('feed.out', 'w+') as f:
             f.write(str(json))
         pass
