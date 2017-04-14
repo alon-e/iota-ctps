@@ -1,12 +1,25 @@
 import os
 
-import iota
 import networkx as nx
 import time
 
 import sys
 from terminaltables import AsciiTable
 
+class transaction:
+    def __init__(self,tryte_string, hash_string):
+        self.hash = hash_string
+        #self.signature_message_fragment = tryte_string[0:2187]
+        self.address = tryte_string[2187:2268]
+        self.value = tryte_string[2268:2295]
+        #self.tag = tryte_string[2295:2322]
+        self.timestamp = tryte_string[2322:2331]
+        #self.current_index = tryte_string[2331:2340]
+        #self.last_index = tryte_string[2340:2349]
+        self.bundle_hash = tryte_string[2349:2430]
+        self.trunk_transaction_hash = tryte_string[2430:2511]
+        self.branch_transaction_hash = tryte_string[2511:2592]
+        #self.nonce = tryte_string[2592:2673]
 
 class tangle:
 
@@ -24,9 +37,12 @@ class tangle:
         self.lines_to_show = 10
         self.data = []
         self.counter = 0
+        self.milestones = {}
 
-        self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
+        self.COOR =      'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
         self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
+
+        self.pruned_tx = 0
 
     def add_tx_to_tangle(self, tx):
 
@@ -34,10 +50,11 @@ class tangle:
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
-        if str(tx.address.as_json_compatible()) == self.COOR:
-            self.graph.node[tx.hash]['confirmed'] = True
+        if tx.address == self.COOR:
+            self.milestones[tx.hash] = 1
+            #self.graph.node[tx.hash]['confirmed'] = True
 
-            self.mark_descendants_confirmed(tx.hash)
+            #self.mark_descendants_confirmed(tx.hash)
 
 
     def incremental_read(self):
@@ -56,10 +73,10 @@ class tangle:
                     neighbor = f.readline().strip('\n')
 
                     #parse fields
-                    tx = iota.Transaction.from_tryte_string_and_hash(trytes,hash)
+                    tx = transaction(trytes,hash)
+
                     #add to graph
                     self.add_tx_to_tangle(tx)
-
 
                     #stats:
                     if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
@@ -87,12 +104,15 @@ class tangle:
 
         # total tx:
         # count num of nodes in graph
-        num_txs = self.graph.number_of_nodes()
+        num_txs = self.pruned_tx + self.graph.number_of_nodes()
+
+
+        self.mark_milestone_descendants_confirmed()
 
         # confirmed tx:
         # count all descendants milestones
         Cnodes = filter(lambda (n, d): (d.has_key('confirmed') and d['confirmed'] == True), self.graph.nodes(data=True))
-        num_ctxs = len(Cnodes)
+        num_ctxs = self.pruned_tx + len(Cnodes)
 
 
         if self.counter > 0:
@@ -119,24 +139,47 @@ class tangle:
 
         self.counter +=1
         self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), tps, ctps,width, avg_c_t])
+        self.broadcast_data(self.data[self.counter - 1])
 
-        #self.data.append([self.counter * self.resolution, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs/(num_txs*1.0)),tps, ctps, width, avg_c_t])
 
-    def mark_descendants_confirmed(self, hash):
-        successors = self.graph.successors(hash)
+    def prune_confirmed_transactions(self):
+        milestones_to_remove = []
+        tx_to_prune = []
+        for milestone in self.milestones:
+            if self.graph.node[milestone].has_key('confirmed') and self.graph.node[milestone]['confirmed']:
+                milestones_to_remove.append(milestone)
+                to_prune = nx.descendants(self.graph, milestone)
+                self.pruned_tx += len(to_prune)
+                for p in to_prune:
+                    tx_to_prune.append(p)
 
-        confirmed = 0
-        for s in successors:
-            if self.graph.node[s].has_key('confirmed') and  self.graph.node[s]['confirmed']:
-                confirmed +=1
-        # stopping condition - both branch & trunk are confirmed
-        if hash == self.all_nines or confirmed == 2:
-            self.graph.node[hash]['confirmed'] = True
-            return
+        remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
+        tx_to_prune_unique = list(set(tx_to_prune))
+        remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
 
-        #recurstion reduction
-        for s in successors:
-            self.mark_descendants_confirmed(s)
+    def mark_milestone_descendants_confirmed(self):
+
+        self.prune_confirmed_transactions()
+
+        descendants = []
+        for milestone in self.milestones:
+            try:
+                descendants.append(nx.descendants(self.graph, milestone))
+            except:
+                print "milestone missing"
+
+        flatten = [item for sublist in descendants for item in sublist]
+        flatten = list(set(flatten))
+        for f in flatten:
+            self.graph.node[f]['confirmed'] = True
+        pass
+
+
+    def broadcast_data(self, data):
+
+        pass
+
+
 
 
 
