@@ -4,7 +4,7 @@ setup(
     name='iota-ctps',
     version='1.0',
     packages=[ '' ],
-    install_requires=['networkx', 'terminaltables', 'iota'],
+    install_requires=['networkx', 'terminaltables'],
     url='',
     license='',
     author='alon-e',
