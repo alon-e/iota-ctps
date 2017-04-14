@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='iota-ctps',
     version='1.0',
-    packages=[ 'iota-ctps' ],
+    packages=[ '' ],
     install_requires=['networkx', 'terminaltables'],
     url='',
     license='',
