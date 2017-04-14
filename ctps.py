@@ -15,7 +15,7 @@ def API(request,auth,url):
 
     try:
         stringified = json.dumps(request)
-        headers = {'content-type': 'application/json', 'Authorization': auth}
+        headers = {'content-type': 'application/json', 'Authorization': 'Basic '+ auth}
         request = urllib2.Request(url=url, data=stringified, headers=headers)
         returnData = urllib2.urlopen(request,timeout=TIMEOUT).read()
 
