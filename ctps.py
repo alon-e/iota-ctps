@@ -62,27 +62,30 @@ class tangle:
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
             # for each file
-            with open(self.directory + file) as f:
-                timestamp = int(file.split('.')[0])
+            try:
+                with open(self.directory + file) as f:
+                    timestamp = int(file.split('.')[0])
 
-                #read only newer files
-                if self.prev_timestamp < timestamp:
+                    #read only newer files
+                    if self.prev_timestamp < timestamp:
 
-                    hash = f.readline().strip('\n')
-                    trytes = f.readline().strip('\n')
-                    neighbor = f.readline().strip('\n')
+                        hash = f.readline().strip('\n')
+                        trytes = f.readline().strip('\n')
+                        neighbor = f.readline().strip('\n')
 
-                    #parse fields
-                    tx = transaction(trytes,hash)
+                        #parse fields
+                        tx = transaction(trytes,hash)
 
-                    #add to graph
-                    self.add_tx_to_tangle(tx)
+                        #add to graph
+                        self.add_tx_to_tangle(tx)
 
-                    #stats:
-                    if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
-                        print 'reading',file,'...'
-                        self.prev_timestamp = timestamp
-                        self.add_stats()
+                        #stats:
+                        if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
+                            print 'reading',file,'...'
+                            self.prev_timestamp = timestamp
+                            self.add_stats()
+            except:
+                pass
 
 
     def print_stats(self):
