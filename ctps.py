@@ -74,7 +74,7 @@ class tangle:
         self.auth_key = auth_key
         self.api_url = api_url
 
-        self.first = None
+        self.first = []
 
     def add_tx_to_tangle(self, tx):
 
@@ -110,14 +110,15 @@ class tangle:
                     #add to graph
                     self.add_tx_to_tangle(tx)
 
-                    if self.first == None:
-                        self.first = hash
+                    if len(self.first) < 3:
+                        self.first.append(hash)
 
                     #stats:
                     if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
                         print 'reading',file,'...'
                         self.prev_timestamp = timestamp
-                        self.add_stats()
+                        #self.add_stats()
+                        self.plot_height()
 
 
 
@@ -178,7 +179,7 @@ class tangle:
         self.broadcast_data([self.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t])
 
 
-    def prune_confirmed_transactions(self):
+    def prune_confirmed_transactions(self,only_remove_milestones=False):
         milestones_to_remove = []
         tx_to_prune = []
         for milestone in self.milestones:
@@ -189,6 +190,10 @@ class tangle:
                     tx_to_prune.append(p)
 
         remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
+
+        if only_remove_milestones:
+            return
+
         tx_to_prune_unique = list(set(tx_to_prune))
         remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
         self.pruned_tx += len(tx_to_prune_unique)
@@ -197,7 +202,7 @@ class tangle:
 
     def mark_milestone_descendants_confirmed(self):
 
-        self.prune_confirmed_transactions()
+        self.prune_confirmed_transactions(only_remove_milestones=True)
 
         descendants = []
         for milestone in self.milestones:
@@ -232,44 +237,36 @@ class tangle:
         }
         with open('feed.out', 'w+') as f:
             f.write(str(json))
+
+        with open('ticker.out', 'a+') as f:
+            f.write(str(json))
+
         if self.auth_key:
             res = API(json,self.auth_key,api_url)
             print res
         pass
 
     def mark_height(self):
-        if self.graph.has_node(self.first):
-            self.graph.node[self.first]['height'] = 0
 
-        indeg = self.graph.in_degree()
-        tip_index = [n for n in indeg if indeg[n] == 0]
+        #prun all but the 200 highest tx
+        keep_depth = 100
+        max_height = 0
+        for n in self.graph.nodes():
+            if self.graph.node[n].has_key('height'):
+                if max_height < self.graph.node[n]['height']:
+                    max_height = self.graph.node[n]['height']
 
-        for tip in tip_index:
-            self.mark_height_recursive(tip)
-        for milestone in self.milestones:
-            self.mark_height_recursive(milestone)
-
-        pass
+        Hnodes = filter(lambda (n, d): (d.has_key('height') and d['height'] < max_height-keep_depth), self.graph.nodes(data=True))
+        remove_transactions = [self.graph.remove_node(p) for (p,d) in Hnodes]
 
 
-    def mark_height_recursive(self,hash):
-        if self.graph.node[hash].has_key('height'):
-            return
+        for f in self.first:
+            if self.graph.has_node(f):
+                self.graph.node[f]['height'] = 0
 
-        if not self.graph.node[hash].has_key('tx'):
-            return
-
-        trunk = self.graph.node[hash]['trunk']
-        if not self.graph.has_node(trunk):
-            return
-
-        if self.graph.node[trunk].has_key('height'):
-            self.graph.node[hash]['height'] = self.graph.node[trunk]['height'] + 1
-            return
-
-        self.mark_height_recursive(trunk)
-
-        pass
+        for f in self.first:
+            self.mark_height_abs(f)
+        return
 
     def plot_height(self):
         self.mark_height()
@@ -286,19 +283,59 @@ class tangle:
                     hist[node['height']] = 0
 
                 hist[node['height']] +=1
-        for h in hist.keys():
-            print h,':',hist[h]
-        print self.graph.number_of_nodes()
 
+        with open('height.out','a+') as f:
+            f.write("height width\n")
+
+            for h in sorted(hist.keys()):
+                f.write(str(h) + ' ' + str(hist[h]) + '\n')
+
+            f.write("Total tx " + str(self.graph.number_of_nodes()) +'\n')
+
+        pass
+
+    def mark_height_abs(self, f):
+
+        for n in self.graph.nodes():
+            if self.graph.node[n].has_key('height'):
+                continue
+            hops = self.count_hops(n,f)
+            if hops !=0:
+                self.graph.node[n]['height'] = hops
+        pass
+
+    def count_hops(self, n, f):
+        current = n
+        hops = 0
+        while (current != f and current!=self.all_nines):
+
+            if not self.graph.has_node(current):
+                return 0
+
+            if not self.graph.node[current].has_key('trunk'):
+                return 0
+            if self.graph.node[current].has_key('height'):
+                return self.graph.node[current]['height'] + hops
+
+            current = self.graph.node[current]['trunk']
+            hops += 1
+
+        return hops
         pass
 
 
 def main(path,resolution,auth_key,api_url):
+    with open('height.out', 'w+') as f:
+        pass
     t = tangle(path,resolution,auth_key,api_url)
     while True:
         t.incremental_read()
-        t.print_stats()
+
         t.plot_height()
+
+        t.add_stats()
+        t.print_stats()
+
         time.sleep(t.resolution)
 
 if __name__ == '__main__':
