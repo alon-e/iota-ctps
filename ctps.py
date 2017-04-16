@@ -74,16 +74,17 @@ class tangle:
         self.auth_key = auth_key
         self.api_url = api_url
 
+        self.first = None
 
     def add_tx_to_tangle(self, tx):
 
-        self.graph.add_node(tx.hash, tx=tx, confirmed=False)
+        self.graph.add_node(tx.hash, tx=tx, confirmed=False, branch= tx.branch_transaction_hash, trunk =tx.trunk_transaction_hash)
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
         if tx.address == self.COOR:
             self.milestones[tx.hash] = 1
-            #self.graph.node[tx.hash]['confirmed'] = True
+            self.graph.node[tx.hash]['milestone'] = True
 
             #self.mark_descendants_confirmed(tx.hash)
 
@@ -93,30 +94,31 @@ class tangle:
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
             # for each file
-            try:
-                with open(self.directory + file) as f:
-                    timestamp = int(file.split('.')[0])
+            with open(self.directory + file) as f:
+                timestamp = int(file.split('.')[0])
 
-                    #read only newer files
-                    if self.prev_timestamp < timestamp:
+                #read only newer files
+                if self.prev_timestamp < timestamp:
 
-                        hash = f.readline().strip('\r\n')
-                        trytes = f.readline().strip('\r\n')
-                        neighbor = f.readline().strip('\r\n')
+                    hash = f.readline().strip('\r\n')
+                    trytes = f.readline().strip('\r\n')
+                    neighbor = f.readline().strip('\r\n')
 
-                        #parse fields
-                        tx = transaction(trytes,hash)
+                    #parse fields
+                    tx = transaction(trytes,hash)
 
-                        #add to graph
-                        self.add_tx_to_tangle(tx)
+                    #add to graph
+                    self.add_tx_to_tangle(tx)
 
-                        #stats:
-                        if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
-                            print 'reading',file,'...'
-                            self.prev_timestamp = timestamp
-                            self.add_stats()
-            except:
-                pass
+                    if self.first == None:
+                        self.first = hash
+
+                    #stats:
+                    if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
+                        print 'reading',file,'...'
+                        self.prev_timestamp = timestamp
+                        self.add_stats()
+
 
 
     def print_stats(self):
@@ -195,6 +197,7 @@ class tangle:
 
     def mark_milestone_descendants_confirmed(self):
 
+        self.prune_confirmed_transactions()
 
         descendants = []
         for milestone in self.milestones:
@@ -208,7 +211,6 @@ class tangle:
         for f in flatten:
             self.graph.node[f]['confirmed'] = True
 
-        self.prune_confirmed_transactions()
 
 
     def broadcast_data(self, data):
@@ -235,8 +237,60 @@ class tangle:
             print res
         pass
 
+    def mark_height(self):
+        if self.graph.has_node(self.first):
+            self.graph.node[self.first]['height'] = 0
+
+        indeg = self.graph.in_degree()
+        tip_index = [n for n in indeg if indeg[n] == 0]
+
+        for tip in tip_index:
+            self.mark_height_recursive(tip)
+        for milestone in self.milestones:
+            self.mark_height_recursive(milestone)
+
+        pass
 
 
+    def mark_height_recursive(self,hash):
+        if self.graph.node[hash].has_key('height'):
+            return
+
+        if not self.graph.node[hash].has_key('tx'):
+            return
+
+        trunk = self.graph.node[hash]['trunk']
+        if not self.graph.has_node(trunk):
+            return
+
+        if self.graph.node[trunk].has_key('height'):
+            self.graph.node[hash]['height'] = self.graph.node[trunk]['height'] + 1
+            return
+
+        self.mark_height_recursive(trunk)
+
+        pass
+
+    def plot_height(self):
+        self.mark_height()
+
+        hist = {}
+        for n in self.graph.nodes():
+            node = self.graph.node[n]
+            if not node:
+                continue
+
+            if node.has_key('height'):
+
+                if not hist.has_key(node['height']):
+                    hist[node['height']] = 0
+
+                hist[node['height']] +=1
+        for h in hist.keys():
+            print h,':',hist[h]
+        print self.graph.number_of_nodes()
+
+        pass
 
 
 def main(path,resolution,auth_key,api_url):
@@ -244,6 +298,7 @@ def main(path,resolution,auth_key,api_url):
     while True:
         t.incremental_read()
         t.print_stats()
+        t.plot_height()
         time.sleep(t.resolution)
 
 if __name__ == '__main__':
