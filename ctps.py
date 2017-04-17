@@ -103,7 +103,7 @@ class tangle:
                         hash = f.readline().strip('\r\n')
                         trytes = f.readline().strip('\r\n')
                         neighbor = f.readline().strip('\r\n')
-                        height = f.readline().strip('\r\n')
+                        height = f.readline().strip('\r\n').split('Height: ')[1]
 
                         #parse fields
                         tx = transaction(trytes,hash)
@@ -252,7 +252,7 @@ class tangle:
 
         with open('width.out', 'w+') as f:
             for key in sorted(hist):
-                f.write(key + ", Width: " + str(hist[key]) + '\n')
+                f.write(key + " " + str(hist[key]) + '\n')
         pass
 
 
