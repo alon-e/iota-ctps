@@ -251,7 +251,7 @@ class tangle:
 
 
         with open('width.out', 'w+') as f:
-            for key in hist:
+            for key in sorted(hist):
                 f.write(key + ", Width: " + str(hist[key]) + '\n')
         pass
 
