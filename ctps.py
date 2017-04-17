@@ -92,31 +92,33 @@ class tangle:
 
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
-            # for each file
-            with open(self.directory + file) as f:
-                timestamp = int(file.split('.')[0])
+            try:
+                # for each file
+                with open(self.directory + file) as f:
+                    timestamp = int(file.split('.')[0])
 
-                #read only newer files
-                if self.prev_timestamp < timestamp:
+                    #read only newer files
+                    if self.prev_timestamp < timestamp:
 
-                    hash = f.readline().strip('\r\n')
-                    trytes = f.readline().strip('\r\n')
-                    neighbor = f.readline().strip('\r\n')
-                    height = f.readline().strip('\r\n')
+                        hash = f.readline().strip('\r\n')
+                        trytes = f.readline().strip('\r\n')
+                        neighbor = f.readline().strip('\r\n')
+                        height = f.readline().strip('\r\n')
 
-                    #parse fields
-                    tx = transaction(trytes,hash)
+                        #parse fields
+                        tx = transaction(trytes,hash)
 
-                    #add to graph
-                    self.add_tx_to_tangle(tx,height)
+                        #add to graph
+                        self.add_tx_to_tangle(tx,height)
 
-                    #stats:
-                    if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
-                        print 'reading',file,'...'
-                        self.prev_timestamp = timestamp
-                        #self.add_stats()
-                        self.calc_width()
-
+                        #stats:
+                        if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
+                            print 'reading',file,'...'
+                            self.prev_timestamp = timestamp
+                            #self.add_stats()
+                            self.calc_width()
+            except:
+                pass
 
 
     def print_stats(self):
@@ -238,7 +240,6 @@ class tangle:
 
     def calc_width(self):
         hist = {}
-        print "calculating width ..."
         for n in self.graph.nodes():
             if not self.graph.node[n].has_key('height'):
                 continue
@@ -248,11 +249,10 @@ class tangle:
                 hist[height] = 0
             hist[height] += 1
 
-        print "writing width ..."
 
         with open('width.out', 'w+') as f:
             for key in hist:
-                f.write(key + str(hist[key]))
+                f.write(key + str(hist[key]) + '\n')
         pass
 
 
