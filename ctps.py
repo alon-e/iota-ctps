@@ -103,7 +103,7 @@ class tangle:
                         hash = f.readline().strip('\r\n')
                         trytes = f.readline().strip('\r\n')
                         neighbor = f.readline().strip('\r\n')
-                        height = f.readline().strip('\r\n').split('Height: ')[1]
+                        height = int(f.readline().strip('\r\n').split('Height: ')[1])
 
                         #parse fields
                         tx = transaction(trytes,hash)
