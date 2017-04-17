@@ -240,6 +240,9 @@ class tangle:
         hist = {}
         print "calculating width ..."
         for n in self.graph.nodes():
+            if not self.graph.node[n].has_key('height'):
+                continue
+
             height = self.graph.node[n]['height']
             if not hist.has_key(height):
                 hist[height] = 0
