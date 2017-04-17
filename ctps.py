@@ -75,9 +75,9 @@ class tangle:
         self.api_url = api_url
 
 
-    def add_tx_to_tangle(self, tx):
+    def add_tx_to_tangle(self, tx,height):
 
-        self.graph.add_node(tx.hash, tx=tx, confirmed=False)
+        self.graph.add_node(tx.hash, tx=tx, confirmed=False, height=height)
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
@@ -103,18 +103,20 @@ class tangle:
                         hash = f.readline().strip('\r\n')
                         trytes = f.readline().strip('\r\n')
                         neighbor = f.readline().strip('\r\n')
+                        height = f.readline().strip('\r\n')
 
                         #parse fields
                         tx = transaction(trytes,hash)
 
                         #add to graph
-                        self.add_tx_to_tangle(tx)
+                        self.add_tx_to_tangle(tx,height)
 
                         #stats:
                         if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
-                            self.add_stats()
+                            #self.add_stats()
+                            self.calc_width()
             except:
                 pass
 
@@ -165,7 +167,8 @@ class tangle:
 
         # Tangle Width
         # count all tx in given height
-        #TODO
+        # TODO
+
 
         # Average Confirmation Time
         # TODO
@@ -235,15 +238,25 @@ class tangle:
             print res
         pass
 
+    def calc_width(self):
+        hist = {}
+        for n in self.graph.nodes():
+            height = self.graph.node[n]['height']
+            if not hist.has_key(height):
+                hist[height] = 0
+            hist[height] += 1
 
-
+        with open('width.out', 'w+') as f:
+            for key in hist:
+                f.write(key + str(hist[key]))
+        pass
 
 
 def main(path,resolution,auth_key,api_url):
     t = tangle(path,resolution,auth_key,api_url)
     while True:
         t.incremental_read()
-        t.print_stats()
+        #t.print_stats()
         time.sleep(t.resolution)
 
 if __name__ == '__main__':
