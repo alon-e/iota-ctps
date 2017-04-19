@@ -115,7 +115,7 @@ class tangle:
                         if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
-                            #self.add_stats()
+                            self.add_stats()
                             self.calc_width()
             except:
                 pass
@@ -190,9 +190,10 @@ class tangle:
                     tx_to_prune.append(p)
 
         remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
-        tx_to_prune_unique = list(set(tx_to_prune))
-        remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
-        self.pruned_tx += len(tx_to_prune_unique)
+
+        #tx_to_prune_unique = list(set(tx_to_prune))
+        #remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
+        #self.pruned_tx += len(tx_to_prune_unique)
 
         #print "pruning:",len(tx_to_prune_unique)
 
@@ -240,19 +241,67 @@ class tangle:
 
     def calc_width(self):
         hist = {}
+
+        hist_confirmed = {}
+        hist_unconfirmed_tips = {}
+        hist_unconfirmed_non_tips = {}
+
         for n in self.graph.nodes():
             if not self.graph.node[n].has_key('height'):
                 continue
 
             height = self.graph.node[n]['height']
+
             if not hist.has_key(height):
                 hist[height] = 0
             hist[height] += 1
 
+            #hist_confirmed
+            if self.graph.node[n].has_key('confirmed') and self.graph.node[n]['confirmed']:
+                if not hist_confirmed.has_key(height):
+                    hist_confirmed[height] = 0
+                hist_confirmed[height] += 1
+                continue
+
+            #hist_unconfirmed_tips
+            if self.graph.in_degree(n) == 0:
+                if not hist_unconfirmed_tips.has_key(height):
+                    hist_unconfirmed_tips[height] = 0
+                hist_unconfirmed_tips[height] += 1
+                continue
+
+            #hist_unconfirmed_non_tips
+            if not hist_unconfirmed_non_tips.has_key(height):
+                hist_unconfirmed_non_tips[height] = 0
+            hist_unconfirmed_non_tips[height] += 1
+            continue
+
+
+
 
         with open('width.out', 'w+') as f:
+            f.write("height " + "Total width " + "confirmed " + "unconfirmed_tips " + "unconfirmed_non_tips" + '\n')
+
             for key in sorted(hist):
-                f.write(str(key) + " " + str(hist[key]) + '\n')
+                line = str(key) + " " + str(hist[key])+ " "
+                if hist_confirmed.has_key(key):
+                    line += str(hist_confirmed[key]) + " "
+                else:
+                    line += "0" + " "
+
+                if hist_unconfirmed_tips.has_key(key):
+                    line += str(hist_unconfirmed_tips[key]) + " "
+                else:
+                    line += "0" + " "
+
+                if hist_unconfirmed_non_tips.has_key(key):
+                    line += str(hist_unconfirmed_non_tips[key]) + " "
+                else:
+                    line += "0" + " "
+
+                line+='\n'
+                f.write(line)
+
         pass
 
 
