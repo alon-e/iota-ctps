@@ -280,7 +280,7 @@ class tangle:
 
 
         with open('width.out', 'w+') as f:
-            f.write("height " + "Total width " + "confirmed " + "unconfirmed_tips " + "unconfirmed_non_tips" + '\n')
+            f.write("height " + "Total_width " + "confirmed " + "unconfirmed_tips " + "unconfirmed_non_tips" + '\n')
 
             for key in sorted(hist):
                 line = str(key) + " " + str(hist[key])+ " "
