@@ -306,7 +306,7 @@ class tangle:
             f.write("height " + "confirmed: * " + "unconfirmed_tips: + " + "unconfirmed_non_tips: =" + '\n')
 
             for key in sorted(hist):
-                line = str(key) + " "
+                line = str(key) + " "+ str(hist[key])+ " "
                 if hist_confirmed.has_key(key):
                     line += hist_confirmed[key]*'*'
 
