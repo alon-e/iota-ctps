@@ -9,6 +9,8 @@ from terminaltables import AsciiTable
 import urllib2
 import json
 
+
+PRUNE = False
 TIMEOUT = 7
 
 def API(request,auth,url):
@@ -187,9 +189,11 @@ class tangle:
                     tx_to_prune.append(p)
 
         remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
-        tx_to_prune_unique = list(set(tx_to_prune))
-        remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
-        self.pruned_tx += len(tx_to_prune_unique)
+
+        if PRUNE:
+            tx_to_prune_unique = list(set(tx_to_prune))
+            remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
+            self.pruned_tx += len(tx_to_prune_unique)
 
         #print "pruning:",len(tx_to_prune_unique)
 
