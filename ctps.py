@@ -239,8 +239,15 @@ class tangle:
             print res
         pass
 
+    def getTips(self):
+        # this was too slow - solution: amortize the tip collection
+        indeg = self.graph.in_degree()
+        tip_index = [n for n in indeg if indeg[n] == 0]
 
-
+        with open('tips.out', 'w+') as f:
+            for tip in tip_index:
+                f.write(str(tip) + '\n')
+        pass
 
 
 def main(path,resolution,auth_key,api_url):
@@ -248,6 +255,7 @@ def main(path,resolution,auth_key,api_url):
     while True:
         t.incremental_read()
         t.print_stats()
+        t.getTips()
         time.sleep(t.resolution)
 
 if __name__ == '__main__':
