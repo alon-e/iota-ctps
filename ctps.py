@@ -136,7 +136,7 @@ class tangle:
 
     def add_stats(self):
 
-        num_txs = num_ctxs = tps = ctps = width = avg_c_t = 0
+        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
 
         # total tx:
         # count num of nodes in graph
@@ -155,7 +155,7 @@ class tangle:
             # TPS
             prev_num_tx = self.data[self.counter - 1][1]
             tps = (num_txs - prev_num_tx) / (self.resolution * 1.0)
-
+            avg_tps = num_txs/(self.counter * (self.resolution * 1.0))
             # CTPS
             prev_num_ctx = self.data[self.counter - 1][2]
 
@@ -163,7 +163,7 @@ class tangle:
                 num_ctxs = prev_num_ctx
 
             ctps = (num_ctxs - prev_num_ctx) / (self.resolution * 1.0)
-
+            avg_ctps = num_ctxs / (self.counter * (self.resolution * 1.0))
 
         # Tangle Width
         # count all tx in given height
@@ -174,8 +174,8 @@ class tangle:
 
 
         self.counter +=1
-        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t])
-        self.broadcast_data([self.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t])
+        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
+        self.broadcast_data([self.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
 
 
     def prune_confirmed_transactions(self):
