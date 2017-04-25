@@ -122,7 +122,7 @@ class tangle:
 
 
     def print_stats(self):
-        table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time']]
+        table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
         for (c,d) in enumerate(self.data):
             if c>self.prev_print - self.lines_to_show:
                 self.prev_print = c
