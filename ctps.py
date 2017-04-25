@@ -303,18 +303,18 @@ class tangle:
                 f.write(line)
 
         with open('width.hist', 'w+') as f:
-            f.write("height " + "confirmed: * " + "unconfirmed_tips: + " + "unconfirmed_non_tips: =" + '\n')
+            f.write("confirmed: * " + "unconfirmed_non_tips: =" + "unconfirmed_tips: + " + '\n\n')
 
-            for key in sorted(hist):
-                line = str(key) + " "+ str(hist[key])+ " "
+            for key in reversed(sorted(hist)):
+                line = '{:7d}'.format(key) + " "+ '{:4d}'.format(hist[key])+ " "
                 if hist_confirmed.has_key(key):
                     line += hist_confirmed[key]*'*'
 
-                if hist_unconfirmed_tips.has_key(key):
-                    line += hist_unconfirmed_tips[key]*'+'
-
                 if hist_unconfirmed_non_tips.has_key(key):
                     line += hist_unconfirmed_non_tips[key]*'='
+
+                if hist_unconfirmed_tips.has_key(key):
+                    line += hist_unconfirmed_tips[key]*'+'
 
                 line+='\n'
                 f.write(line)
