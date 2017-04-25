@@ -303,7 +303,7 @@ class tangle:
                 f.write(line)
 
         with open('width.hist', 'w+') as f:
-            f.write("confirmed: * " + "unconfirmed_non_tips: =" + "unconfirmed_tips: + " + '\n\n')
+            f.write("confirmed: * " + "unconfirmed_non_tips: = " + "unconfirmed_tips: + " + '\n\n')
 
             for key in reversed(sorted(hist)):
                 line = '{:7d}'.format(key) + " "+ '{:4d}'.format(hist[key])+ " "
