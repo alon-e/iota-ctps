@@ -10,6 +10,7 @@ import urllib2
 import json
 
 TIMEOUT = 7
+MARK_AS_START = 100
 
 def API(request,auth,url):
 
@@ -74,16 +75,18 @@ class tangle:
         self.auth_key = auth_key
         self.api_url = api_url
 
+        self.first = []
 
-    def add_tx_to_tangle(self, tx,height):
 
-        self.graph.add_node(tx.hash, tx=tx, confirmed=False, height=height)
+    def add_tx_to_tangle(self, tx):
+
+        self.graph.add_node(tx.hash, tx=tx, confirmed=False, trunk=tx.trunk_transaction_hash)
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
         if tx.address == self.COOR:
             self.milestones[tx.hash] = 1
-            #self.graph.node[tx.hash]['confirmed'] = True
+            self.graph.node[tx.hash]['is_milestone'] = True
 
             #self.mark_descendants_confirmed(tx.hash)
 
@@ -103,13 +106,17 @@ class tangle:
                         hash = f.readline().strip('\r\n')
                         trytes = f.readline().strip('\r\n')
                         neighbor = f.readline().strip('\r\n')
-                        height = int(f.readline().strip('\r\n').split('Height: ')[1])
+                        #height = int(f.readline().strip('\r\n').split('Height: ')[1])
 
                         #parse fields
                         tx = transaction(trytes,hash)
 
                         #add to graph
-                        self.add_tx_to_tangle(tx,height)
+                        self.add_tx_to_tangle(tx)
+
+                        if len(self.first) < MARK_AS_START:
+                            self.graph.node[tx.hash]["height"] = 0
+                            self.first.append(tx.hash)
 
                         #stats:
                         if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
@@ -142,6 +149,7 @@ class tangle:
         # count num of nodes in graph
         num_txs = self.pruned_tx + self.graph.number_of_nodes()
 
+        self.mark_height()
 
         self.mark_milestone_descendants_confirmed()
 
@@ -242,6 +250,7 @@ class tangle:
     def calc_width(self):
         hist = {}
 
+        hist_milestone = {}
         hist_confirmed = {}
         hist_unconfirmed_tips = {}
         hist_unconfirmed_non_tips = {}
@@ -255,6 +264,13 @@ class tangle:
             if not hist.has_key(height):
                 hist[height] = 0
             hist[height] += 1
+
+            # hist_confirmed
+            if self.graph.node[n].has_key('is_milestone') and self.graph.node[n]['is_milestone']:
+                if not hist_milestone.has_key(height):
+                    hist_milestone[height] = 0
+                hist_milestone[height] += 1
+                continue
 
             #hist_confirmed
             if self.graph.node[n].has_key('confirmed') and self.graph.node[n]['confirmed']:
@@ -280,10 +296,14 @@ class tangle:
 
 
         with open('width.out', 'w+') as f:
-            f.write("height " + "Total_width " + "confirmed " + "unconfirmed_tips " + "unconfirmed_non_tips" + '\n')
+            f.write("height " + "Total_width " + "milestone " + "confirmed " + "unconfirmed_tips " + "unconfirmed_non_tips" + '\n')
 
             for key in sorted(hist):
                 line = str(key) + " " + str(hist[key])+ " "
+                if hist_milestone.has_key(key):
+                    line += str(hist_milestone[key]) + " "
+                else:
+                    line += "0" + " "
                 if hist_confirmed.has_key(key):
                     line += str(hist_confirmed[key]) + " "
                 else:
@@ -303,10 +323,14 @@ class tangle:
                 f.write(line)
 
         with open('width.hist', 'w+') as f:
-            f.write("confirmed: * " + "unconfirmed_non_tips: = " + "unconfirmed_tips: + " + '\n\n')
+            f.write("milestone: # " + "confirmed: * " + "unconfirmed_non_tips: = " + "unconfirmed_tips: + " + '\n\n')
 
             for key in reversed(sorted(hist)):
                 line = '{:7d}'.format(key) + " "+ '{:4d}'.format(hist[key])+ " "
+
+                if hist_milestone.has_key(key):
+                    line += hist_milestone[key]*'#'
+
                 if hist_confirmed.has_key(key):
                     line += hist_confirmed[key]*'*'
 
@@ -322,13 +346,49 @@ class tangle:
 
         pass
 
+    def mark_height(self):
+
+        for n in self.graph.nodes():
+            if self.graph.node[n].has_key('height'):
+                continue
+            self.mark_height_for_node(n)
+
+        pass
+
+    def mark_height_for_node(self, n):
+
+        current = n
+        hops = 0
+        hops_list = [n]
+        while True:
+            if not self.graph.node[current].has_key('trunk'):
+                return
+
+            current = self.graph.node[current]['trunk']
+            if not self.graph.has_node(current):
+                return
+
+            hops+=1
+
+            if self.graph.node[current].has_key('height'):
+                hops += self.graph.node[current]['height']
+                break
+
+            hops_list.append(current)
+
+        for h in hops_list:
+            self.graph.node[h]['height'] = hops
+            hops -=1
+
 
 def main(path,resolution,auth_key,api_url):
     t = tangle(path,resolution,auth_key,api_url)
+
     while True:
         t.incremental_read()
-        #t.print_stats()
+        t.print_stats()
         time.sleep(t.resolution)
+
 
 if __name__ == '__main__':
 
