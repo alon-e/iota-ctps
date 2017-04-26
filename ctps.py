@@ -10,7 +10,7 @@ import urllib2
 import json
 
 TIMEOUT = 7
-MARK_AS_START = 100
+MARK_AS_START = 0
 
 def API(request,auth,url):
 
@@ -350,6 +350,9 @@ class tangle:
 
         for n in self.graph.nodes():
             if self.graph.node[n].has_key('height'):
+                continue
+            if n==self.all_nines:
+                self.graph.node[n]['height'] = 0
                 continue
             self.mark_height_for_node(n)
 
