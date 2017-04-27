@@ -249,6 +249,16 @@ class tangle:
                 f.write(str(tip) + '\n')
         pass
 
+    def getMissingTx(self):
+        # this was too slow - solution: amortize the tip collection
+        outdeg = self.graph.out_degree()
+        missingTx_index = [n for n in outdeg if outdeg[n] == 0]
+
+        with open('missingTx.out', 'w+') as f:
+            for missingTx in missingTx_index:
+                f.write(str(missingTx) + '\n')
+        pass
+
 
 def main(path,resolution,auth_key,api_url):
     t = tangle(path,resolution,auth_key,api_url)
@@ -256,6 +266,7 @@ def main(path,resolution,auth_key,api_url):
         t.incremental_read()
         t.print_stats()
         t.getTips()
+        t.getMissingTx()
         time.sleep(t.resolution)
 
 if __name__ == '__main__':
