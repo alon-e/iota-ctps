@@ -76,6 +76,7 @@ class tangle:
         self.api_url = api_url
 
         self.first = []
+        self.latest_milestone = ""
 
 
     def add_tx_to_tangle(self, tx):
@@ -87,6 +88,7 @@ class tangle:
         if tx.address == self.COOR:
             self.milestones[tx.hash] = 1
             self.graph.node[tx.hash]['is_milestone'] = True
+            self.latest_milestone = tx.hash
 
             #self.mark_descendants_confirmed(tx.hash)
 
@@ -124,6 +126,7 @@ class tangle:
                             self.prev_timestamp = timestamp
                             self.add_stats()
                             self.calc_width()
+                            self.plot_latest_subtangle()
             except:
                 pass
 
@@ -383,6 +386,36 @@ class tangle:
             self.graph.node[h]['height'] = hops
             hops -=1
 
+    def plot_latest_subtangle(self):
+
+        #get latest milestone
+        latest_milestone_height = self.graph.node[self.latest_milestone]['height']
+
+        #get all connected nodes - till 100 depth
+        THRESHOLD = 10
+        subtangle_depth = []
+        subtangle = nx.descendants(self.graph,self.latest_milestone)
+        for node in subtangle:
+            if self.graph.node[node].has_key('height'):
+                if self.graph.node[node]['height'] > latest_milestone_height - THRESHOLD:
+                    subtangle_depth.append(node)
+
+        #copy to new graph
+        G = self.graph.subgraph(subtangle_depth)
+
+        #draw it
+        GRAPH_SCALING_FACTOR = 5
+        # for (u, v) in G.edges():
+        #     if G.node[u]['height'] >= 0:
+        #         G.edge[u][v]['len'] = G.node[u]['height'] * GRAPH_SCALING_FACTOR
+
+
+        p = nx.drawing.nx_pydot.to_pydot(G)
+        p.write_raw('network_topology.dot')
+
+        p.write_pdf('network_topology.pdf', prog='dot')
+        pass
+
 
 def main(path,resolution,auth_key,api_url):
     t = tangle(path,resolution,auth_key,api_url)
@@ -390,7 +423,9 @@ def main(path,resolution,auth_key,api_url):
     while True:
         t.incremental_read()
         t.print_stats()
+        t.plot_latest_subtangle()
         time.sleep(t.resolution)
+        return
 
 
 if __name__ == '__main__':
