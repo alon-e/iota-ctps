@@ -405,15 +405,18 @@ class tangle:
 
         #draw it
         GRAPH_SCALING_FACTOR = 5
-        # for (u, v) in G.edges():
-        #     if G.node[u]['height'] >= 0:
-        #         G.edge[u][v]['len'] = G.node[u]['height'] * GRAPH_SCALING_FACTOR
+        for (u, v) in G.edges():
+            if G.node[u]['height'] >= 0:
+                G.edge[u][v]['height'] = G.node[u]['height'] * GRAPH_SCALING_FACTOR
+                G.edge[u][v]['len'] = G.node[u]['height'] * GRAPH_SCALING_FACTOR
+                G.edge[u][v]['foo'] = 'bar'
 
 
         p = nx.drawing.nx_pydot.to_pydot(G)
+
         p.write_raw('network_topology.dot')
 
-        p.write_pdf('network_topology.pdf', prog='dot')
+        p.write_pdf('network_topology.pdf', prog='fdp')
         pass
 
 
@@ -424,8 +427,9 @@ def main(path,resolution,auth_key,api_url):
         t.incremental_read()
         t.print_stats()
         t.plot_latest_subtangle()
-        time.sleep(t.resolution)
         return
+        time.sleep(t.resolution)
+
 
 
 if __name__ == '__main__':
