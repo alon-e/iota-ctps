@@ -55,7 +55,7 @@ class tangle:
         self.output = './table.out'
         self.graph = nx.MultiDiGraph()
         self.resolution = int(resolution)
-        self.res_ms = self.resolution * 1000
+        self.res_ns = self.resolution * 1000* 1000
         self.prev_timestamp = 0
 
         self.prev_print = 0
@@ -119,7 +119,7 @@ class tangle:
                             self.first.append(tx.hash)
 
                         #stats:
-                        if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
+                        if (self.prev_timestamp/self.res_ns < timestamp/self.res_ns):
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
                             self.add_stats()
