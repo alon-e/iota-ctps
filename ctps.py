@@ -4,6 +4,8 @@ import networkx as nx
 import time
 
 import sys
+
+import webcolors
 from terminaltables import AsciiTable
 
 import urllib2
@@ -53,7 +55,7 @@ class tangle:
 
         self.directory = path
         self.output = './table.out'
-        self.graph = nx.MultiDiGraph()
+        self.graph = nx.DiGraph()
         self.resolution = int(resolution)
         self.res_ms = self.resolution * 1000
         self.prev_timestamp = 0
@@ -392,31 +394,36 @@ class tangle:
         latest_milestone_height = self.graph.node[self.latest_milestone]['height']
 
         #get all connected nodes - till 100 depth
-        THRESHOLD = 10
+        THRESHOLD = 100
         subtangle_depth = []
         subtangle = nx.descendants(self.graph,self.latest_milestone)
         for node in subtangle:
             if self.graph.node[node].has_key('height'):
                 if self.graph.node[node]['height'] > latest_milestone_height - THRESHOLD:
                     subtangle_depth.append(node)
+        subtangle_depth.append(self.latest_milestone)
 
         #copy to new graph
         G = self.graph.subgraph(subtangle_depth)
-
         #draw it
-        GRAPH_SCALING_FACTOR = 5
+        GRAPH_SCALING_FACTOR = 0.05
         for (u, v) in G.edges():
             if G.node[u]['height'] >= 0:
-                G.edge[u][v]['height'] = G.node[u]['height'] * GRAPH_SCALING_FACTOR
-                G.edge[u][v]['len'] = G.node[u]['height'] * GRAPH_SCALING_FACTOR
-                G.edge[u][v]['foo'] = 'bar'
+                #G.edge[u][v]['weight'] = (latest_milestone_height - G.node[u]['height']) * GRAPH_SCALING_FACTOR
+                pass
 
+        for node in G.nodes():
+            G.node[node]['label'] = node[:5]
+            G.node[node]['fillcolor'] = webcolors.rgb_to_hex((0,int((G.node[node]['height'])/float(latest_milestone_height) * 0xff),0))
+            G.node[node]['style'] = 'filled'
 
-        p = nx.drawing.nx_pydot.to_pydot(G)
+        #G.graph['rank']="max"
+
+        p = nx.drawing.nx_pydot.to_pydot(self.graph)
 
         p.write_raw('network_topology.dot')
 
-        p.write_pdf('network_topology.pdf', prog='fdp')
+        p.write_pdf('network_topology.pdf',prog = "dot")
         pass
 
 
