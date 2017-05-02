@@ -9,6 +9,9 @@ from terminaltables import AsciiTable
 import urllib2
 import json
 
+import iota
+
+
 TIMEOUT = 7
 MARK_AS_START = 0
 
@@ -28,16 +31,13 @@ def API(request,auth,url):
     response = json.loads(returnData)
     return response
 
-
-
-
 class transaction:
     def __init__(self,tryte_string, hash_string):
         self.hash = hash_string
         #self.signature_message_fragment = tryte_string[0:2187]
         self.address = tryte_string[2187:2268]
         self.value = tryte_string[2268:2295]
-        #self.tag = tryte_string[2295:2322]
+        self.tag = tryte_string[2295:2322]
         self.timestamp = tryte_string[2322:2331]
         #self.current_index = tryte_string[2331:2340]
         #self.last_index = tryte_string[2340:2349]
@@ -63,6 +63,7 @@ class tangle:
         self.data = []
         self.counter = 0
         self.milestones = {}
+        self.latest_milestone = 0
 
         self.COOR =      'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
         self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
@@ -85,8 +86,15 @@ class tangle:
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
         if tx.address == self.COOR:
-            self.milestones[tx.hash] = 1
             self.graph.node[tx.hash]['is_milestone'] = True
+
+            index = iota.int_from_trits(iota.TryteString(tx.tag).as_trits())
+            self.graph.node[tx.hash]['index'] = index
+            timestamp = iota.int_from_trits(iota.TryteString(tx.timestamp).as_trits())
+            self.graph.node[tx.hash]['timestamp'] = timestamp
+
+            self.latest_milestone = tx.hash
+            self.milestones[tx.hash] = 1
 
             #self.mark_descendants_confirmed(tx.hash)
 
@@ -95,7 +103,7 @@ class tangle:
 
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
-            try:
+            #try:
                 # for each file
                 with open(self.directory + file) as f:
                     timestamp = int(file.split('.')[0])
@@ -124,8 +132,8 @@ class tangle:
                             self.prev_timestamp = timestamp
                             self.add_stats()
                             self.calc_width()
-            except:
-                pass
+            #except:
+            #    pass
 
 
     def print_stats(self):
@@ -254,6 +262,7 @@ class tangle:
         hist_confirmed = {}
         hist_unconfirmed_tips = {}
         hist_unconfirmed_non_tips = {}
+        hist_milestone_data = {}
 
         for n in self.graph.nodes():
             if not self.graph.node[n].has_key('height'):
@@ -269,7 +278,9 @@ class tangle:
             if self.graph.node[n].has_key('is_milestone') and self.graph.node[n]['is_milestone']:
                 if not hist_milestone.has_key(height):
                     hist_milestone[height] = 0
+                    hist_milestone_data[height] = []
                 hist_milestone[height] += 1
+                hist_milestone_data[height].append(n)
                 continue
 
             #hist_confirmed
@@ -329,7 +340,10 @@ class tangle:
                 line = '{:7d}'.format(key) + " "+ '{:4d}'.format(hist[key])+ " "
 
                 if hist_milestone.has_key(key):
-                    line += hist_milestone[key]*'#'
+                    #print milestone details
+                    line += "".join(([ '[#{:<6d} / {:10d}] #'.format(self.graph.node[n]['index'], self.graph.node[n]['timestamp']) for n in hist_milestone_data[key]]))
+                else:
+                    line+=" " * 23
 
                 if hist_confirmed.has_key(key):
                     line += hist_confirmed[key]*'*'
