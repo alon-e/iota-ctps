@@ -12,7 +12,7 @@ import urllib2
 import json
 
 TIMEOUT = 7
-MARK_AS_START = 0
+MARK_AS_START = 1
 
 def API(request,auth,url):
 
@@ -57,7 +57,7 @@ class tangle:
         self.output = './table.out'
         self.graph = nx.DiGraph()
         self.resolution = int(resolution)
-        self.res_ms = self.resolution * 1000
+        self.res_ms = self.resolution * 1000 * 1000
         self.prev_timestamp = 0
 
         self.prev_print = 0
@@ -79,6 +79,7 @@ class tangle:
 
         self.first = []
         self.latest_milestone = ""
+        self.prev_latest = ""
 
 
     def add_tx_to_tangle(self, tx):
@@ -90,6 +91,8 @@ class tangle:
         if tx.address == self.COOR:
             self.milestones[tx.hash] = 1
             self.graph.node[tx.hash]['is_milestone'] = True
+            self.graph.node[tx.hash]['confirmed'] = True
+
             self.latest_milestone = tx.hash
 
             #self.mark_descendants_confirmed(tx.hash)
@@ -99,7 +102,7 @@ class tangle:
 
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
-            try:
+            #try:
                 # for each file
                 with open(self.directory + file) as f:
                     timestamp = int(file.split('.')[0])
@@ -129,8 +132,8 @@ class tangle:
                             self.add_stats()
                             self.calc_width()
                             self.plot_latest_subtangle()
-            except:
-                pass
+            #except:
+            #    pass
 
 
     def print_stats(self):
@@ -391,39 +394,111 @@ class tangle:
     def plot_latest_subtangle(self):
 
         #get latest milestone
-        latest_milestone_height = self.graph.node[self.latest_milestone]['height']
+        if not self.latest_milestone or not self.graph.node[self.latest_milestone].has_key('height'):
+            return
+        if self.prev_latest == self.latest_milestone:
+            return
 
+        self.prev_latest = self.latest_milestone
+
+        latest_milestone_height = self.graph.node[self.latest_milestone]['height']
+        if latest_milestone_height == 10628:
+            print "me!"
         #get all connected nodes - till 100 depth
-        THRESHOLD = 100
+        THRESHOLD = 40
         subtangle_depth = []
         subtangle = nx.descendants(self.graph,self.latest_milestone)
         for node in subtangle:
-            if self.graph.node[node].has_key('height'):
-                if self.graph.node[node]['height'] > latest_milestone_height - THRESHOLD:
+            if self.graph.node[node].has_key('height') and self.graph.node[node].has_key('confirmed') and self.graph.node[node]['confirmed']:
+                if self.graph.node[node]['height'] > latest_milestone_height - THRESHOLD and self.graph.node[node]['height'] <= latest_milestone_height:
                     subtangle_depth.append(node)
         subtangle_depth.append(self.latest_milestone)
 
         #copy to new graph
         G = self.graph.subgraph(subtangle_depth)
         #draw it
-        GRAPH_SCALING_FACTOR = 0.05
         for (u, v) in G.edges():
             if G.node[u]['height'] >= 0:
-                #G.edge[u][v]['weight'] = (latest_milestone_height - G.node[u]['height']) * GRAPH_SCALING_FACTOR
-                pass
+                if G.node[u]['trunk'] == v:
+                    G.edge[u][v]['fillcolor'] = '#000000'
+                else:
+                    G.edge[u][v]['fillcolor'] = '#bbbbbb'
 
         for node in G.nodes():
-            G.node[node]['label'] = node[:5]
-            G.node[node]['fillcolor'] = webcolors.rgb_to_hex((0,int((G.node[node]['height'])/float(latest_milestone_height) * 0xff),0))
+            G.node[node]['label'] = node[:5] + " : " + str(G.node[node]['height'])
+            G.node[node]['fillcolor'] = webcolors.rgb_to_hex((int(0xff - (latest_milestone_height - G.node[node]['height'])/float(THRESHOLD) * 0xff),0,0))
+            if G.node[node].has_key('is_milestone') and G.node[node]['is_milestone']:
+                G.node[node]['fillcolor'] = '#00ff00'
             G.node[node]['style'] = 'filled'
 
+
+
+        #####
+        #write Cytoscape format:
+
+        elements = []
+        for node in G.nodes():
+            elements.append({'data': {'id': node, 'label': G.node[node]['label'], 'height' :  G.node[node]['height'], 'color' : G.node[node]['fillcolor']}})
+
+        for u,v in G.edges():
+            elements.append({'data': {'id': u+v, 'source': u, 'target': v,'color' : G.edge[u][v]['fillcolor']}})
+
+        with open('topo.js', 'w+') as f:
+            header = """var cy = cytoscape({
+            
+              container: document.getElementById('cy'), // container to render in
+            """
+            footer = """,
+
+                      style: [ // the stylesheet for the graph
+                        {
+                          selector: 'node',
+                          style: {
+                            'background-color': 'data(color)'   ,
+                                           label: 'data(label)',
+                                            'width': 100,
+                            'height': 100,
+}
+                        },
+                    
+                        {
+                          selector: 'edge',
+                          style: {
+                            'width': 10,
+                            'line-color': 'data(color)',
+                            'mid-target-arrow-color': 'data(color)',
+                            'target-arrow-shape': 'triangle',
+                            'mid-target-arrow-shape': 'triangle',
+
+                          }
+                        }
+                      ],
+                    
+                      layout: {
+                        name: 'dagre',
+                        directed: true,
+                        
+                        roots:'#"""+ self.latest_milestone + """'
+                      }
+                    
+                    });"""
+
+            f.write(header+ '\n')
+            f.write('elements : [' +'\n')
+            for elem in elements:
+                f.write(json.dumps(elem) + ',\n')
+            f.write(']' + '\n')
+            f.write(footer+ '\n')
+
+
+        #####
         #G.graph['rank']="max"
 
-        p = nx.drawing.nx_pydot.to_pydot(self.graph)
-
-        p.write_raw('network_topology.dot')
-
-        p.write_pdf('network_topology.pdf',prog = "dot")
+        # p = nx.drawing.nx_pydot.to_pydot(self.graph)
+        #
+        # p.write_raw('network_topology.dot')
+        #
+        # p.write_pdf('network_topology.pdf',prog = "dot")
         pass
 
 
