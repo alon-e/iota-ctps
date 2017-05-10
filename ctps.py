@@ -11,8 +11,11 @@ from terminaltables import AsciiTable
 import urllib2
 import json
 
+import iota
+
+
 TIMEOUT = 7
-MARK_AS_START = 1
+MARK_AS_START = 0
 
 def API(request,auth,url):
 
@@ -39,7 +42,7 @@ class transaction:
         #self.signature_message_fragment = tryte_string[0:2187]
         self.address = tryte_string[2187:2268]
         self.value = tryte_string[2268:2295]
-        #self.tag = tryte_string[2295:2322]
+        self.tag = tryte_string[2295:2322]
         self.timestamp = tryte_string[2322:2331]
         #self.current_index = tryte_string[2331:2340]
         #self.last_index = tryte_string[2340:2349]
@@ -55,9 +58,9 @@ class tangle:
 
         self.directory = path
         self.output = './table.out'
-        self.graph = nx.DiGraph()
+        self.graph = nx.MultiDiGraph()
         self.resolution = int(resolution)
-        self.res_ms = self.resolution * 1000 * 1000
+        self.res_ns = self.resolution * 1000* 1000
         self.prev_timestamp = 0
 
         self.prev_print = 0
@@ -89,11 +92,16 @@ class tangle:
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
         if tx.address == self.COOR:
-            self.milestones[tx.hash] = 1
             self.graph.node[tx.hash]['is_milestone'] = True
             self.graph.node[tx.hash]['confirmed'] = True
 
+            index = iota.int_from_trits(iota.TryteString(tx.tag).as_trits())
+            self.graph.node[tx.hash]['index'] = index
+            timestamp = iota.int_from_trits(iota.TryteString(tx.timestamp).as_trits())
+            self.graph.node[tx.hash]['timestamp'] = timestamp
+
             self.latest_milestone = tx.hash
+            self.milestones[tx.hash] = 1
 
             #self.mark_descendants_confirmed(tx.hash)
 
@@ -126,7 +134,7 @@ class tangle:
                             self.first.append(tx.hash)
 
                         #stats:
-                        if (self.prev_timestamp/self.res_ms < timestamp/self.res_ms):
+                        if (self.prev_timestamp/self.res_ns < timestamp/self.res_ns):
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
                             self.add_stats()
@@ -262,6 +270,7 @@ class tangle:
         hist_confirmed = {}
         hist_unconfirmed_tips = {}
         hist_unconfirmed_non_tips = {}
+        hist_milestone_data = {}
 
         for n in self.graph.nodes():
             if not self.graph.node[n].has_key('height'):
@@ -277,7 +286,9 @@ class tangle:
             if self.graph.node[n].has_key('is_milestone') and self.graph.node[n]['is_milestone']:
                 if not hist_milestone.has_key(height):
                     hist_milestone[height] = 0
+                    hist_milestone_data[height] = []
                 hist_milestone[height] += 1
+                hist_milestone_data[height].append(n)
                 continue
 
             #hist_confirmed
@@ -337,7 +348,10 @@ class tangle:
                 line = '{:7d}'.format(key) + " "+ '{:4d}'.format(hist[key])+ " "
 
                 if hist_milestone.has_key(key):
-                    line += hist_milestone[key]*'#'
+                    #print milestone details
+                    line += "".join(([ '[#{:<6d} / {:10d}] #'.format(self.graph.node[n]['index'], self.graph.node[n]['timestamp']) for n in hist_milestone_data[key]]))
+                else:
+                    line+=" " * 23
 
                 if hist_confirmed.has_key(key):
                     line += hist_confirmed[key]*'*'
@@ -402,10 +416,10 @@ class tangle:
         self.prev_latest = self.latest_milestone
 
         latest_milestone_height = self.graph.node[self.latest_milestone]['height']
-        if latest_milestone_height == 10628:
-            print "me!"
+        if latest_milestone_height < 8452:
+            return
         #get all connected nodes - till 100 depth
-        THRESHOLD = 40
+        THRESHOLD = 60
         subtangle_depth = []
         subtangle = nx.descendants(self.graph,self.latest_milestone)
         for node in subtangle:
@@ -427,9 +441,11 @@ class tangle:
         for node in G.nodes():
             G.node[node]['label'] = node[:5] + " : " + str(G.node[node]['height'])
             G.node[node]['fillcolor'] = webcolors.rgb_to_hex((int(0xff - (latest_milestone_height - G.node[node]['height'])/float(THRESHOLD) * 0xff),0,0))
+            G.node[node]['size'] = 100
             if G.node[node].has_key('is_milestone') and G.node[node]['is_milestone']:
                 G.node[node]['fillcolor'] = '#00ff00'
-            G.node[node]['style'] = 'filled'
+                G.node[node]['label'] = G.node[node]['label'] + " : #" + str(G.node[node]['index']) + " : " + str(G.node[node]['timestamp']) + ' sec.'
+                G.node[node]['size'] = 150
 
 
 
@@ -438,7 +454,7 @@ class tangle:
 
         elements = []
         for node in G.nodes():
-            elements.append({'data': {'id': node, 'label': G.node[node]['label'], 'height' :  G.node[node]['height'], 'color' : G.node[node]['fillcolor']}})
+            elements.append({'data': {'id': node, 'label': G.node[node]['label'], 'height' :  G.node[node]['height'], 'color' : G.node[node]['fillcolor'], 'size' : G.node[node]['size']}})
 
         for u,v in G.edges():
             elements.append({'data': {'id': u+v, 'source': u, 'target': v,'color' : G.edge[u][v]['fillcolor']}})
@@ -456,8 +472,8 @@ class tangle:
                           style: {
                             'background-color': 'data(color)'   ,
                                            label: 'data(label)',
-                                            'width': 100,
-                            'height': 100,
+                                            'width': 'data(size)',
+                                            'height': 'data(size)',
 }
                         },
                     
