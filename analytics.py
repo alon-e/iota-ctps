@@ -42,7 +42,6 @@ class analytics:
             # TPS
             prev_num_tx = self.data.numTxs[self.data.last_index()]
             tps = (num_txs - prev_num_tx) / (self.tangle.resolution * 1.0)
-            avg_tps = num_txs / (self.counter * (self.tangle.resolution * 1.0))
             # CTPS
             prev_num_ctx = self.data.numCtxs[self.data.last_index()]
 
@@ -50,7 +49,6 @@ class analytics:
                 num_ctxs = prev_num_ctx
 
             ctps = (num_ctxs - prev_num_ctx) / (self.tangle.resolution * 1.0)
-            avg_ctps = num_ctxs / (self.counter * (self.tangle.resolution * 1.0))
 
         # Tangle Width
         # count all tx in given height
@@ -70,11 +68,15 @@ class analytics:
             delta_ctxs = num_ctxs - self.data.numCtxs[self.data.last_index() - window_samples]
             delta_txs = num_txs - self.data.numTxs[self.data.last_index() - window_samples]
 
+            avg_tps = delta_txs / float((window_samples + 1) * self.tangle.resolution)
+            avg_ctps = delta_ctxs / float((window_samples +1) * self.tangle.resolution)
+
             c_rate = delta_ctxs / (delta_txs * 1.0)
 
         self.counter += 1
+        t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
 
-        self.data.append(self.tangle.prev_timestamp,
+        self.data.append(t,
                          num_txs,
                          num_ctxs,
                          '{:.1%}'.format(c_rate),
@@ -148,11 +150,14 @@ class analytics:
             print res
 
         t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
-        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / {} milestones / depth: 100".format(t,
-                                                                                                            json['numCtxs'],
-                                                                                                            json['numTxs'],
-                                                                                                            json['cRate'],
-                                                                                                      self.tangle.milestone_count)
+        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} milestones".format(
+            t,
+            json['numCtxs'],
+            json['numTxs'],
+            json['cRate'],
+            data.avgTps[index],
+            data.avgCtps[index],
+            self.tangle.milestone_count)
         # send slack only every X time
         if (  self.tangle.prev_timestamp > self.last_slack_broadcast + self.slack_broadcast_threshold):
             self.last_slack_broadcast = self.tangle.prev_timestamp
@@ -167,7 +172,8 @@ class analytics:
     def print_stats(self):
         full_table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
                        'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS', 'max TPS', 'max CTPS']]
-        short_table_data = full_table_data
+        short_table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
+                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS', 'max TPS', 'max CTPS']]
 
         for (c, d) in enumerate(self.data.all):
             full_table_data.append(d)
