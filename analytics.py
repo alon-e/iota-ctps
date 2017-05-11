@@ -13,6 +13,8 @@ class analytics:
         self.counter = 0
         
     def analyze(self):
+        self.mark_height()
+        self.mark_milestone_descendants_confirmed()
         self.add_stats()
         #TODO move broadcast here
         self.print_stats()
@@ -25,10 +27,6 @@ class analytics:
         # total tx:
         # count num of nodes in graph
         num_txs = self.tangle.pruned_tx + self.tangle.graph.number_of_nodes()
-
-        self.mark_height()
-
-        self.mark_milestone_descendants_confirmed()
 
         # confirmed tx:
         # count all descendants milestones
@@ -134,6 +132,27 @@ class analytics:
             print res
 
 
+    def print_stats(self):
+        full_table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
+                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
+        short_table_data = full_table_data
+
+        for (c, d) in enumerate(self.data):
+            full_table_data.append(d)
+            if c > self.tangle.prev_print - self.tangle.lines_to_show:
+                self.tangle.prev_print = c
+                short_table_data.append(d)
+
+        with open(self.tangle.output_short, 'w+') as f:
+            f.write(AsciiTable(short_table_data).table)
+
+        with open(self.tangle.output_full, 'w+') as f:
+            f.write(AsciiTable(full_table_data).table)
+        pass
+
+    ###################################
+    # WIDTH related
+    ###################################
     def calc_width(self):
         hist = {}
 
@@ -275,22 +294,6 @@ class analytics:
             self.tangle.graph.node[h]['height'] = hops
             hops -= 1
 
-    def print_stats(self):
-        full_table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
-                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
-        short_table_data = full_table_data
 
-        for (c, d) in enumerate(self.data):
-            full_table_data.append(d)
-            if c > self.tangle.prev_print - self.tangle.lines_to_show:
-                self.tangle.prev_print = c
-                short_table_data.append(d)
-
-        with open(self.tangle.output_short, 'w+') as f:
-            f.write(AsciiTable(short_table_data).table)
-
-        with open(self.tangle.output_full, 'w+') as f:
-            f.write(AsciiTable(full_table_data).table)
-        pass
 
 
