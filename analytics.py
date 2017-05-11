@@ -4,12 +4,14 @@ import time
 from terminaltables import AsciiTable
 
 import api
+import data
+
 
 class analytics:
 
     def __init__(self,tangle):
         self.tangle = tangle
-        self.data = []
+        self.data = data.data()
         self.counter = 0
         
     def analyze(self):
@@ -17,6 +19,7 @@ class analytics:
         self.mark_milestone_descendants_confirmed()
         self.add_stats()
         #TODO move broadcast here
+        self.broadcast_data()
         self.print_stats()
         self.calc_width()
 
@@ -35,11 +38,11 @@ class analytics:
 
         if self.counter > 0:
             # TPS
-            prev_num_tx = self.data[self.counter - 1][1]
+            prev_num_tx = self.data.numTxs[self.data.last_index()]
             tps = (num_txs - prev_num_tx) / (self.tangle.resolution * 1.0)
             avg_tps = num_txs / (self.counter * (self.tangle.resolution * 1.0))
             # CTPS
-            prev_num_ctx = self.data[self.counter - 1][2]
+            prev_num_ctx = self.data.numCtxs[self.data.last_index()]
 
             if num_ctxs == 0:
                 num_ctxs = prev_num_ctx
@@ -55,14 +58,23 @@ class analytics:
         # Average Confirmation Time
         # TODO
 
+        #TODO update to moving avg
+        c_rate = num_ctxs / (num_txs * 1.0)
 
         self.counter += 1
-        self.data.append(
-            [self.tangle.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps),
-             '{:.1f}'.format(ctps), width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
-        self.broadcast_data([self.tangle.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)),
-                             '{:.1f}'.format(tps), '{:.1f}'.format(ctps), width, avg_c_t, '{:.1f}'.format(avg_tps),
-                             '{:.1f}'.format(avg_ctps)])
+
+        self.data.append(self.tangle.prev_timestamp,
+                         num_txs,
+                         num_ctxs,
+                         '{:.1%}'.format(c_rate),
+                         '{:.1f}'.format(tps),
+                         '{:.1f}'.format(ctps),
+                         width,
+                         avg_c_t,
+                         '{:.1f}'.format(avg_tps),
+                         '{:.1f}'.format(avg_ctps))
+
+
 
 
     def prune_confirmed_transactions(self):
@@ -101,20 +113,18 @@ class analytics:
         self.prune_confirmed_transactions()
 
 
-    def broadcast_data(self, data):
-        if self.tangle.broadcast_max_tps < float(data[4]):
-            self.tangle.broadcast_max_tps = float(data[4])
-        if self.tangle.broadcast_max_ctps < float(data[5]):
-            self.tangle.broadcast_max_ctps = float(data[5])
+    def broadcast_data(self):
 
+        data = self.data
+        index = self.data.last_index()
         json = {
-            'ctps': data[5],
-            'tps': data[4],
-            'numTxs': data[1],
-            'numCtxs': data[2],
-            'cRate': data[3],
-            'maxCtps': self.tangle.broadcast_max_ctps,
-            'maxTps': self.tangle.broadcast_max_tps
+            'ctps': data.ctps[index],
+            'tps':  data.tps[index],
+            'numTxs': data.numTxs[index],
+            'numCtxs': data.numCtxs[index],
+            'cRate': data.cRate[index],
+            'maxCtps': data.maxCtps[index],
+            'maxTps': data.maxTps[index]
 
         }
         with open('feed.out', 'w+') as f:
@@ -134,10 +144,10 @@ class analytics:
 
     def print_stats(self):
         full_table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
-                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
+                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS', 'max TPS', 'max CTPS']]
         short_table_data = full_table_data
 
-        for (c, d) in enumerate(self.data):
+        for (c, d) in enumerate(self.data.all):
             full_table_data.append(d)
             if c > self.tangle.prev_print - self.tangle.lines_to_show:
                 self.tangle.prev_print = c
