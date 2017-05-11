@@ -81,7 +81,7 @@ class tangle:
 
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
-            #try:
+            try:
                 # for each file
                 with open(self.directory + file) as f:
                     timestamp = int(file.split('.')[0])
@@ -109,8 +109,8 @@ class tangle:
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
                             self.analytics.analyze()
-            #except:
-            #    pass
+            except:
+                pass
 
     def print_stats(self):
         self.analytics.print_stats()

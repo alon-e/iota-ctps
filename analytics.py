@@ -6,7 +6,7 @@ from terminaltables import AsciiTable
 import api
 import data
 
-
+MOVING_AVG_WINDOW = 10 * 60 * 1000 * 1000
 class analytics:
 
     def __init__(self,tangle):
@@ -64,11 +64,11 @@ class analytics:
         # moving avg
         #(totCtx(N) - totCtx(N - 1)) / (totTx(N) - totTx(N - 1))
 
-        MOVING_AVG_WINDOW = 10 - 1
-        if self.counter > MOVING_AVG_WINDOW:
+        window_samples = (MOVING_AVG_WINDOW / self.tangle.res_ns) - 1
+        if self.counter > window_samples:
 
-            delta_ctxs = num_ctxs - self.data.numCtxs[self.data.last_index() - MOVING_AVG_WINDOW]
-            delta_txs = num_txs - self.data.numTxs[self.data.last_index() - MOVING_AVG_WINDOW]
+            delta_ctxs = num_ctxs - self.data.numCtxs[self.data.last_index() - window_samples]
+            delta_txs = num_txs - self.data.numTxs[self.data.last_index() - window_samples]
 
             c_rate = delta_ctxs / (delta_txs * 1.0)
 
