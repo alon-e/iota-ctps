@@ -22,7 +22,8 @@ class tangle:
 
         #filesystem
         self.directory = path
-        self.output = './table.out'
+        self.output_short = './table.out'
+        self.output_full  = './table.full'
 
         #parser
         self.resolution = int(resolution)
@@ -106,21 +107,10 @@ class tangle:
                         if (self.prev_timestamp/self.res_ns < timestamp/self.res_ns):
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
-                            self.analytics.add_stats()
-                            self.analytics.calc_width()
+                            self.analytics.analyze()
             #except:
             #    pass
 
     def print_stats(self):
-        table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
-                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
-        for (c, d) in enumerate(self.analytics.data):
-            if c > self.prev_print - self.lines_to_show:
-                self.prev_print = c
-                table_data.append(d)  # created needs +2 for genesis
+        self.analytics.print_stats()
 
-        table = AsciiTable(table_data)
-        # print(table.table)
-
-        with open(self.output, 'w+') as f:
-            f.write(table.table)

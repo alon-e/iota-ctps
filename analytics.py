@@ -1,5 +1,6 @@
 import networkx as nx
 import time
+
 from terminaltables import AsciiTable
 
 import api
@@ -11,6 +12,12 @@ class analytics:
         self.data = []
         self.counter = 0
         
+    def analyze(self):
+        self.add_stats()
+        #TODO move broadcast here
+        self.print_stats()
+        self.calc_width()
+
 
     def add_stats(self):
         num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
@@ -267,3 +274,23 @@ class analytics:
         for h in hops_list:
             self.tangle.graph.node[h]['height'] = hops
             hops -= 1
+
+    def print_stats(self):
+        full_table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
+                       'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
+        short_table_data = full_table_data
+
+        for (c, d) in enumerate(self.data):
+            full_table_data.append(d)
+            if c > self.tangle.prev_print - self.tangle.lines_to_show:
+                self.tangle.prev_print = c
+                short_table_data.append(d)
+
+        with open(self.tangle.output_short, 'w+') as f:
+            f.write(AsciiTable(short_table_data).table)
+
+        with open(self.tangle.output_full, 'w+') as f:
+            f.write(AsciiTable(full_table_data).table)
+        pass
+
+
