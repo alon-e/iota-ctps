@@ -150,7 +150,7 @@ class analytics:
             print res
 
         t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
-        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} {} milestones".format(
+        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} milestones".format(
             t,
             json['numCtxs'],
             json['numTxs'],
