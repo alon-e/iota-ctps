@@ -150,14 +150,14 @@ class analytics:
             print res
 
         t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
-        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} milestones".format(
+        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} {} milestones".format(
             t,
             json['numCtxs'],
             json['numTxs'],
             json['cRate'],
             data.avgTps[index],
             data.avgCtps[index],
-            self.tangle.milestone_count)
+            len(self.tangle.all_milestones))
         # send slack only every X time
         if (  self.tangle.prev_timestamp > self.last_slack_broadcast + self.slack_broadcast_threshold):
             self.last_slack_broadcast = self.tangle.prev_timestamp

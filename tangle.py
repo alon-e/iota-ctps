@@ -37,6 +37,8 @@ class tangle:
         self.first = []
         self.prune = PRUNE
         self.milestones = {}
+        self.all_milestones = {}
+
         self.latest_milestone = 0
         self.milestone_count = 0
         self.pruned_tx = 0
@@ -74,6 +76,7 @@ class tangle:
 
             self.latest_milestone = tx.hash
             self.milestones[tx.hash] = 1
+            self.all_milestones[tx.hash] = 1
             self.milestone_count +=1
 
 
