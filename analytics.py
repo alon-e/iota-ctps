@@ -1,0 +1,266 @@
+import networkx as nx
+import time
+from terminaltables import AsciiTable
+
+import api
+
+class analytics:
+
+    def __init__(self,tangle):
+        self.tangle = tangle
+
+    def add_stats(self):
+        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
+
+        # total tx:
+        # count num of nodes in graph
+        num_txs = self.tangle.pruned_tx + self.tangle.graph.number_of_nodes()
+
+        self.mark_height()
+
+        self.mark_milestone_descendants_confirmed()
+
+        # confirmed tx:
+        # count all descendants milestones
+        Cnodes = filter(lambda (n, d): (d.has_key('confirmed') and d['confirmed'] == True), self.tangle.graph.nodes(data=True))
+        num_ctxs = self.tangle.pruned_tx + len(Cnodes)
+
+        if self.tangle.counter > 0:
+            # TPS
+            prev_num_tx = self.tangle.data[self.tangle.counter - 1][1]
+            tps = (num_txs - prev_num_tx) / (self.tangle.resolution * 1.0)
+            avg_tps = num_txs / (self.tangle.counter * (self.tangle.resolution * 1.0))
+            # CTPS
+            prev_num_ctx = self.tangle.data[self.tangle.counter - 1][2]
+
+            if num_ctxs == 0:
+                num_ctxs = prev_num_ctx
+
+            ctps = (num_ctxs - prev_num_ctx) / (self.tangle.resolution * 1.0)
+            avg_ctps = num_ctxs / (self.tangle.counter * (self.tangle.resolution * 1.0))
+
+        # Tangle Width
+        # count all tx in given height
+        # TODO
+
+
+        # Average Confirmation Time
+        # TODO
+
+
+        self.tangle.counter += 1
+        self.tangle.data.append(
+            [self.tangle.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps),
+             '{:.1f}'.format(ctps), width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
+        self.broadcast_data([self.tangle.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)),
+                             '{:.1f}'.format(tps), '{:.1f}'.format(ctps), width, avg_c_t, '{:.1f}'.format(avg_tps),
+                             '{:.1f}'.format(avg_ctps)])
+
+
+    def prune_confirmed_transactions(self):
+        milestones_to_remove = []
+        tx_to_prune = []
+        for milestone in self.tangle.milestones:
+            if self.tangle.graph.node[milestone].has_key('confirmed') and self.tangle.graph.node[milestone]['confirmed']:
+                milestones_to_remove.append(milestone)
+                to_prune = nx.descendants(self.tangle.graph, milestone)
+                for p in to_prune:
+                    tx_to_prune.append(p)
+
+        remove_milestones = [self.tangle.milestones.pop(m) for m in milestones_to_remove]
+
+        if self.tangle.prune:
+            tx_to_prune_unique = list(set(tx_to_prune))
+            remove_transactions = [self.tangle.graph.remove_node(p) for p in tx_to_prune_unique]
+            self.tangle.pruned_tx += len(tx_to_prune_unique)
+
+            # print "pruning:",len(tx_to_prune_unique)
+
+
+    def mark_milestone_descendants_confirmed(self):
+        descendants = []
+        for milestone in self.tangle.milestones:
+            try:
+                descendants.append(nx.descendants(self.tangle.graph, milestone))
+            except:
+                print "milestone missing"
+
+        flatten = [item for sublist in descendants for item in sublist]
+        flatten = list(set(flatten))
+        for f in flatten:
+            self.tangle.graph.node[f]['confirmed'] = True
+
+        self.prune_confirmed_transactions()
+
+
+    def broadcast_data(self, data):
+        if self.tangle.broadcast_max_tps < float(data[4]):
+            self.tangle.broadcast_max_tps = float(data[4])
+        if self.tangle.broadcast_max_ctps < float(data[5]):
+            self.tangle.broadcast_max_ctps = float(data[5])
+
+        json = {
+            'ctps': data[5],
+            'tps': data[4],
+            'numTxs': data[1],
+            'numCtxs': data[2],
+            'cRate': data[3],
+            'maxCtps': self.tangle.broadcast_max_ctps,
+            'maxTps': self.tangle.broadcast_max_tps
+
+        }
+        with open('feed.out', 'w+') as f:
+            f.write(str(json))
+        if self.tangle.auth_key:
+            res = api.API(json, self.tangle.auth_key, self.tangle.api_url)
+            print res
+        t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
+        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} milestones / depth: 100".format(t,
+                                                                                                            json['numCtxs'],
+                                                                                                            json['numTxs'],
+                                                                                                            self.tangle.milestone_count)
+        if self.tangle.auth_key:
+            res = api.API_slack(slack_string, self.tangle.auth_key)
+            print res
+
+
+    def calc_width(self):
+        hist = {}
+
+        hist_milestone = {}
+        hist_confirmed = {}
+        hist_unconfirmed_tips = {}
+        hist_unconfirmed_non_tips = {}
+        hist_milestone_data = {}
+
+        for n in self.tangle.graph.nodes():
+            if not self.tangle.graph.node[n].has_key('height'):
+                continue
+
+            height = self.tangle.graph.node[n]['height']
+
+            if not hist.has_key(height):
+                hist[height] = 0
+            hist[height] += 1
+
+            # hist_confirmed
+            if self.tangle.graph.node[n].has_key('is_milestone') and self.tangle.graph.node[n]['is_milestone']:
+                if not hist_milestone.has_key(height):
+                    hist_milestone[height] = 0
+                    hist_milestone_data[height] = []
+                hist_milestone[height] += 1
+                hist_milestone_data[height].append(n)
+                continue
+
+            # hist_confirmed
+            if self.tangle.graph.node[n].has_key('confirmed') and self.tangle.graph.node[n]['confirmed']:
+                if not hist_confirmed.has_key(height):
+                    hist_confirmed[height] = 0
+                hist_confirmed[height] += 1
+                continue
+
+            # hist_unconfirmed_tips
+            if self.tangle.graph.in_degree(n) == 0:
+                if not hist_unconfirmed_tips.has_key(height):
+                    hist_unconfirmed_tips[height] = 0
+                hist_unconfirmed_tips[height] += 1
+                continue
+
+            # hist_unconfirmed_non_tips
+            if not hist_unconfirmed_non_tips.has_key(height):
+                hist_unconfirmed_non_tips[height] = 0
+            hist_unconfirmed_non_tips[height] += 1
+            continue
+
+        with open('width.out', 'w+') as f:
+            f.write(
+                "height " + "Total_width " + "milestone " + "confirmed " + "unconfirmed_tips " + "unconfirmed_non_tips" + '\n')
+
+            for key in sorted(hist):
+                line = str(key) + " " + str(hist[key]) + " "
+                if hist_milestone.has_key(key):
+                    line += str(hist_milestone[key]) + " "
+                else:
+                    line += "0" + " "
+                if hist_confirmed.has_key(key):
+                    line += str(hist_confirmed[key]) + " "
+                else:
+                    line += "0" + " "
+
+                if hist_unconfirmed_tips.has_key(key):
+                    line += str(hist_unconfirmed_tips[key]) + " "
+                else:
+                    line += "0" + " "
+
+                if hist_unconfirmed_non_tips.has_key(key):
+                    line += str(hist_unconfirmed_non_tips[key]) + " "
+                else:
+                    line += "0" + " "
+
+                line += '\n'
+                f.write(line)
+
+        with open('width.hist', 'w+') as f:
+            f.write("milestone: # " + "confirmed: * " + "unconfirmed_non_tips: = " + "unconfirmed_tips: + " + '\n\n')
+
+            for key in reversed(sorted(hist)):
+                line = '{:7d}'.format(key) + " " + '{:4d}'.format(hist[key]) + " "
+
+                if hist_milestone.has_key(key):
+                    # print milestone details
+                    line += "".join((['[#{:<6d} / {:10d}] #'.format(self.tangle.graph.node[n]['index'],
+                                                                    self.tangle.graph.node[n]['timestamp']) for n in
+                                      hist_milestone_data[key]]))
+                else:
+                    line += " " * 23
+
+                if hist_confirmed.has_key(key):
+                    line += hist_confirmed[key] * '*'
+
+                if hist_unconfirmed_non_tips.has_key(key):
+                    line += hist_unconfirmed_non_tips[key] * '='
+
+                if hist_unconfirmed_tips.has_key(key):
+                    line += hist_unconfirmed_tips[key] * '+'
+
+                line += '\n'
+                f.write(line)
+
+        pass
+
+
+    def mark_height(self):
+        for n in self.tangle.graph.nodes():
+            if self.tangle.graph.node[n].has_key('height'):
+                continue
+            if n == self.tangle.all_nines:
+                self.tangle.graph.node[n]['height'] = 0
+                continue
+            self.mark_height_for_node(n)
+
+        pass
+
+
+    def mark_height_for_node(self, n):
+        current = n
+        hops = 0
+        hops_list = [n]
+        while True:
+            if not self.tangle.graph.node[current].has_key('trunk'):
+                return
+
+            current = self.tangle.graph.node[current]['trunk']
+            if not self.tangle.graph.has_node(current):
+                return
+
+            hops += 1
+
+            if self.tangle.graph.node[current].has_key('height'):
+                hops += self.tangle.graph.node[current]['height']
+                break
+
+            hops_list.append(current)
+
+        for h in hops_list:
+            self.tangle.graph.node[h]['height'] = hops
+            hops -= 1
