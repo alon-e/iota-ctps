@@ -8,6 +8,9 @@ class analytics:
 
     def __init__(self,tangle):
         self.tangle = tangle
+        self.data = []
+        self.counter = 0
+        
 
     def add_stats(self):
         num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
@@ -25,19 +28,19 @@ class analytics:
         Cnodes = filter(lambda (n, d): (d.has_key('confirmed') and d['confirmed'] == True), self.tangle.graph.nodes(data=True))
         num_ctxs = self.tangle.pruned_tx + len(Cnodes)
 
-        if self.tangle.counter > 0:
+        if self.counter > 0:
             # TPS
-            prev_num_tx = self.tangle.data[self.tangle.counter - 1][1]
+            prev_num_tx = self.data[self.counter - 1][1]
             tps = (num_txs - prev_num_tx) / (self.tangle.resolution * 1.0)
-            avg_tps = num_txs / (self.tangle.counter * (self.tangle.resolution * 1.0))
+            avg_tps = num_txs / (self.counter * (self.tangle.resolution * 1.0))
             # CTPS
-            prev_num_ctx = self.tangle.data[self.tangle.counter - 1][2]
+            prev_num_ctx = self.data[self.counter - 1][2]
 
             if num_ctxs == 0:
                 num_ctxs = prev_num_ctx
 
             ctps = (num_ctxs - prev_num_ctx) / (self.tangle.resolution * 1.0)
-            avg_ctps = num_ctxs / (self.tangle.counter * (self.tangle.resolution * 1.0))
+            avg_ctps = num_ctxs / (self.counter * (self.tangle.resolution * 1.0))
 
         # Tangle Width
         # count all tx in given height
@@ -48,8 +51,8 @@ class analytics:
         # TODO
 
 
-        self.tangle.counter += 1
-        self.tangle.data.append(
+        self.counter += 1
+        self.data.append(
             [self.tangle.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps),
              '{:.1f}'.format(ctps), width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
         self.broadcast_data([self.tangle.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)),

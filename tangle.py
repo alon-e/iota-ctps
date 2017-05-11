@@ -20,37 +20,39 @@ class tangle:
 
     def __init__(self,path,resolution,auth_key,api_url):
 
+        #filesystem
         self.directory = path
         self.output = './table.out'
-        self.graph = nx.MultiDiGraph()
+
+        #parser
         self.resolution = int(resolution)
         self.res_ns = self.resolution * 1000* 1000
         self.prev_timestamp = 0
 
-        self.prev_print = 0
-        self.lines_to_show = 10
-        self.data = []
-        self.counter = 0
+        #graph
+        self.graph = nx.MultiDiGraph()
+        self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
+        self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
+        self.first = []
+        self.prune = PRUNE
         self.milestones = {}
         self.latest_milestone = 0
         self.milestone_count = 0
-
-        self.COOR =      'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
-        self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
-
         self.pruned_tx = 0
 
+        #analytics
+        self.analytics = analytics.analytics(self)
+
+
+        #api
         self.broadcast_max_tps = 0
         self.broadcast_max_ctps = 0
+        self.prev_print = 0
+        self.lines_to_show = 10
 
         self.auth_key = auth_key
         self.api_url = api_url
 
-        self.first = []
-
-        self.prune = PRUNE
-
-        self.analytics = analytics.analytics(self)
 
 
     def add_tx_to_tangle(self, tx):
@@ -112,7 +114,7 @@ class tangle:
     def print_stats(self):
         table_data = [['timestamp', 'Total Tx.', 'Confirmed Tx.', 'Conf. rate', 'TPS', 'CTPS', 'Tangle width',
                        'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
-        for (c, d) in enumerate(self.data):
+        for (c, d) in enumerate(self.analytics.data):
             if c > self.prev_print - self.lines_to_show:
                 self.prev_print = c
                 table_data.append(d)  # created needs +2 for genesis
