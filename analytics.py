@@ -18,7 +18,6 @@ class analytics:
         self.mark_height()
         self.mark_milestone_descendants_confirmed()
         self.add_stats()
-        #TODO move broadcast here
         self.broadcast_data()
         self.print_stats()
         self.calc_width()
@@ -127,16 +126,24 @@ class analytics:
             'maxTps': data.maxTps[index]
 
         }
+        #write feed to file
         with open('feed.out', 'w+') as f:
             f.write(str(json))
+
+        #send json to api endpoint
         if self.tangle.auth_key:
             res = api.API(json, self.tangle.auth_key, self.tangle.api_url)
             print res
+
         t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
-        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} milestones / depth: 100".format(t,
+        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / {} milestones / depth: 100".format(t,
                                                                                                             json['numCtxs'],
                                                                                                             json['numTxs'],
+                                                                                                            json['cRate'],
                                                                                                             self.tangle.milestone_count)
+        print slack_string
+        #send slack channel msg
+        #TODO print only every X time
         if self.tangle.auth_key:
             res = api.API_slack(slack_string, self.tangle.auth_key)
             print res
