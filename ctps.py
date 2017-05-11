@@ -11,7 +11,23 @@ import json
 
 import iota
 
+from slackclient import SlackClient
 
+
+
+def API_slack(request,slack_token):
+
+    sc = SlackClient(slack_token)
+
+    sc.api_call(
+      "chat.postMessage",
+        channel="#bot_testing",
+        username="alon-e",
+      text=request
+    )
+
+
+PRUNE = False
 TIMEOUT = 7
 MARK_AS_START = 0
 
@@ -64,6 +80,7 @@ class tangle:
         self.counter = 0
         self.milestones = {}
         self.latest_milestone = 0
+        self.milestone_count = 0
 
         self.COOR =      'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
         self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
@@ -95,7 +112,7 @@ class tangle:
 
             self.latest_milestone = tx.hash
             self.milestones[tx.hash] = 1
-
+            self.milestone_count +=1
             #self.mark_descendants_confirmed(tx.hash)
 
 
@@ -137,7 +154,7 @@ class tangle:
 
 
     def print_stats(self):
-        table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time']]
+        table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
         for (c,d) in enumerate(self.data):
             if c>self.prev_print - self.lines_to_show:
                 self.prev_print = c
@@ -151,7 +168,7 @@ class tangle:
 
     def add_stats(self):
 
-        num_txs = num_ctxs = tps = ctps = width = avg_c_t = 0
+        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
 
         # total tx:
         # count num of nodes in graph
@@ -171,7 +188,7 @@ class tangle:
             # TPS
             prev_num_tx = self.data[self.counter - 1][1]
             tps = (num_txs - prev_num_tx) / (self.resolution * 1.0)
-
+            avg_tps = num_txs/(self.counter * (self.resolution * 1.0))
             # CTPS
             prev_num_ctx = self.data[self.counter - 1][2]
 
@@ -179,7 +196,7 @@ class tangle:
                 num_ctxs = prev_num_ctx
 
             ctps = (num_ctxs - prev_num_ctx) / (self.resolution * 1.0)
-
+            avg_ctps = num_ctxs / (self.counter * (self.resolution * 1.0))
 
         # Tangle Width
         # count all tx in given height
@@ -191,8 +208,8 @@ class tangle:
 
 
         self.counter +=1
-        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t])
-        self.broadcast_data([self.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t])
+        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
+        self.broadcast_data([self.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
 
 
     def prune_confirmed_transactions(self):
@@ -207,9 +224,10 @@ class tangle:
 
         remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
 
-        #tx_to_prune_unique = list(set(tx_to_prune))
-        #remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
-        #self.pruned_tx += len(tx_to_prune_unique)
+        if PRUNE:
+            tx_to_prune_unique = list(set(tx_to_prune))
+            remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
+            self.pruned_tx += len(tx_to_prune_unique)
 
         #print "pruning:",len(tx_to_prune_unique)
 
@@ -253,7 +271,11 @@ class tangle:
         if self.auth_key:
             res = API(json,self.auth_key,api_url)
             print res
-        pass
+        t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.prev_timestamp/1000/1000))
+        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} milestones / depth: 100".format(t,json['numCtxs'],json['numTxs'], self.milestone_count/2)
+        if self.auth_key:
+            res = API_slack(slack_string, self.auth_key)
+            print res
 
     def calc_width(self):
         hist = {}
@@ -418,6 +440,7 @@ if __name__ == '__main__':
         api_url = None
     elif len(sys.argv) <5:
         auth_key = sys.argv[3]
+        api_url = None
     else:
         auth_key = sys.argv[3]
         api_url = sys.argv[4]
