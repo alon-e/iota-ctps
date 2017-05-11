@@ -18,7 +18,7 @@ MARK_AS_START = 0
 class tangle:
 
 
-    def __init__(self,path,resolution,auth_key,api_url):
+    def __init__(self,path,resolution,auth_key,api_url,slack_key):
 
         #filesystem
         self.directory = path
@@ -53,6 +53,7 @@ class tangle:
 
         self.auth_key = auth_key
         self.api_url = api_url
+        self.slack_key = slack_key
 
 
 

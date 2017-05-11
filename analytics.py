@@ -13,6 +13,9 @@ class analytics:
         self.tangle = tangle
         self.data = data.data()
         self.counter = 0
+
+        self.last_slack_broadcast = 0
+        self.slack_broadcast_threshold = 10 * 60 * 1000 * 1000
         
     def analyze(self):
         self.mark_height()
@@ -24,7 +27,7 @@ class analytics:
 
 
     def add_stats(self):
-        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
+        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = c_rate = 0
 
         # total tx:
         # count num of nodes in graph
@@ -57,8 +60,17 @@ class analytics:
         # Average Confirmation Time
         # TODO
 
-        #TODO update to moving avg
-        c_rate = num_ctxs / (num_txs * 1.0)
+        # Confirmation rate
+        # moving avg
+        #(totCtx(N) - totCtx(N - 1)) / (totTx(N) - totTx(N - 1))
+
+        MOVING_AVG_WINDOW = 10 - 1
+        if self.counter > MOVING_AVG_WINDOW:
+
+            delta_ctxs = num_ctxs - self.data.numCtxs[self.data.last_index() - MOVING_AVG_WINDOW]
+            delta_txs = num_txs - self.data.numTxs[self.data.last_index() - MOVING_AVG_WINDOW]
+
+            c_rate = delta_ctxs / (delta_txs * 1.0)
 
         self.counter += 1
 
@@ -140,13 +152,16 @@ class analytics:
                                                                                                             json['numCtxs'],
                                                                                                             json['numTxs'],
                                                                                                             json['cRate'],
-                                                                                                            self.tangle.milestone_count)
-        print slack_string
-        #send slack channel msg
-        #TODO print only every X time
-        if self.tangle.auth_key:
-            res = api.API_slack(slack_string, self.tangle.auth_key)
-            print res
+                                                                                                      self.tangle.milestone_count)
+        # send slack only every X time
+        if (  self.tangle.prev_timestamp > self.last_slack_broadcast + self.slack_broadcast_threshold):
+            self.last_slack_broadcast = self.tangle.prev_timestamp
+
+            print slack_string
+            #send slack channel msg
+            if self.tangle.slack_key:
+                res = api.API_slack(slack_string, self.tangle.slack_key)
+                print res
 
 
     def print_stats(self):

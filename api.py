@@ -9,10 +9,9 @@ def API_slack(request,slack_token):
 
     sc = SlackClient(slack_token)
 
-    sc.api_call(
+    return sc.api_call(
       "chat.postMessage",
         channel="#bot_testing",
-        username="alon-e",
       text=request
     )
 
