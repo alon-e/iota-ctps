@@ -11,7 +11,7 @@ def API_slack(request,slack_token):
 
     return sc.api_call(
       "chat.postMessage",
-        channel="#bot_testing",
+        channel="#botbox-testnet",
       text=request
     )
 
