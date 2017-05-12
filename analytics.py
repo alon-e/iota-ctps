@@ -21,9 +21,18 @@ class analytics:
         self.mark_height()
         self.mark_milestone_descendants_confirmed()
         self.add_stats()
-        self.broadcast_data()
-        self.print_stats()
-        self.calc_width()
+        try:
+            self.broadcast_data()
+        except:
+            pass
+        try:
+            self.print_stats()
+        except:
+            pass
+        try:
+            self.calc_width()
+        except:
+            pass
 
 
     def add_stats(self):
