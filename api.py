@@ -25,11 +25,13 @@ def API(request,auth,url):
     try:
         request = urllib2.Request(url=url, data=stringified, headers=headers)
         returnData = urllib2.urlopen(request,timeout=TIMEOUT).read()
+        response = json.loads(returnData)
+
     except:
         print url, "Timeout!"
         print '\n    ' + repr(sys.exc_info())
-        return
-
-    response = json.loads(returnData)
+        return " "
+    if not response:
+        response = " "
     return response
 

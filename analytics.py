@@ -18,16 +18,24 @@ class analytics:
         self.slack_broadcast_threshold = 10 * 60 * 1000 * 1000
 
         self.do_width = do_width
-        
+
     def analyze(self):
         self.mark_height()
         self.mark_milestone_descendants_confirmed()
         self.add_stats()
-        self.broadcast_data()
-        self.print_stats()
-
-        if self.do_width:
-            self.calc_width()
+        try:
+            self.broadcast_data()
+        except:
+            pass
+        try:
+            self.print_stats()
+        except:
+            pass
+        try:
+            if self.do_width:
+                self.calc_width()
+        except:
+            pass
 
 
     def add_stats(self):
@@ -149,7 +157,7 @@ class analytics:
             f.write(str(json))
 
         #send json to api endpoint
-        if self.tangle.auth_key:
+        if self.tangle.auth_key and self.tangle.latest_milestone_index > self.tangle.milestone_to_broadcast_after:
             res = api.API(json, self.tangle.auth_key, self.tangle.api_url)
             print res
 
@@ -161,14 +169,14 @@ class analytics:
             json['cRate'],
             data.avgTps[index],
             data.avgCtps[index],
-            self.tangle.milestone_count)
+            self.tangle.latest_milestone_index)
         # send slack only every X time
         if (  self.tangle.prev_timestamp > self.last_slack_broadcast + self.slack_broadcast_threshold):
             self.last_slack_broadcast = self.tangle.prev_timestamp
 
             print slack_string
             #send slack channel msg
-            if self.tangle.slack_key:
+            if self.tangle.slack_key and self.tangle.latest_milestone_index > self.tangle.milestone_to_broadcast_after:
                 res = api.API_slack(slack_string, self.tangle.slack_key)
                 print res
 
