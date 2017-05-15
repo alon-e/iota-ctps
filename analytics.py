@@ -20,7 +20,9 @@ class analytics:
         self.do_width = do_width
 
     def analyze(self):
-        self.mark_height()
+        if self.do_width:
+            self.mark_height()
+
         self.mark_milestone_descendants_confirmed()
         self.add_stats()
         try:
