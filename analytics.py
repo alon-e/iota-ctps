@@ -1,6 +1,7 @@
 import networkx as nx
 import time
 
+import sys
 from terminaltables import AsciiTable
 
 import api
@@ -107,6 +108,9 @@ class analytics:
     def prune_confirmed_transactions(self):
         milestones_to_remove = []
         tx_to_prune = []
+
+
+
         for milestone in self.tangle.milestones:
             if self.tangle.graph.node[milestone].has_key('confirmed') and self.tangle.graph.node[milestone]['confirmed']:
                 milestones_to_remove.append(milestone)
@@ -126,6 +130,16 @@ class analytics:
 
     def mark_milestone_descendants_confirmed(self):
         descendants = []
+
+        # NCnodes = filter(
+        #     lambda (n, d): (not d.has_key('confirmed') or (d.has_key('confirmed') and d['confirmed'] == False)),
+        #     self.tangle.graph.nodes(data=True))
+        # try:
+        #     NCGraph = self.tangle.graph.subgraph(NCnodes)
+        # except:
+        #     a = sys.exc_info()[0]
+        #     print a
+
         for milestone in self.tangle.milestones:
             try:
                 descendants.append(nx.descendants(self.tangle.graph, milestone))
