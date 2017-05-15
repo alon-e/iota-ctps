@@ -130,19 +130,15 @@ class analytics:
 
     def mark_milestone_descendants_confirmed(self):
         descendants = []
-
-        # NCnodes = filter(
-        #     lambda (n, d): (not d.has_key('confirmed') or (d.has_key('confirmed') and d['confirmed'] == False)),
-        #     self.tangle.graph.nodes(data=True))
-        # try:
-        #     NCGraph = self.tangle.graph.subgraph(NCnodes)
-        # except:
-        #     a = sys.exc_info()[0]
-        #     print a
+        NCnodesIter = []
+        NCnodes = filter(lambda (n, d): (not d.has_key('confirmed') or (d.has_key('confirmed') and d['confirmed'] == False)),self.tangle.graph.nodes(data=True))
+        for n,d in NCnodes:
+            NCnodesIter.append(n)
+        NCGraph = self.tangle.graph.subgraph(NCnodesIter)
 
         for milestone in self.tangle.milestones:
             try:
-                descendants.append(nx.descendants(self.tangle.graph, milestone))
+                descendants.append(nx.descendants(NCGraph, milestone))
             except:
                 print "milestone missing"
 
