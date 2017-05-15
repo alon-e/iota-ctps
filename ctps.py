@@ -1,11 +1,30 @@
+"""Usage:
+  ctps.py [-e DIR] [-i INTERVAL] [options]
+
+
+  Options:
+      -h --help                                 show this help message and exit
+      --version                                 show version and exit
+      -e DIR --export_folder=DIR                export folder
+      -i INTERVAL --interval=INTERVAL           sampling interval [default: 30]
+      --auth_key=AUTH_KEY                       authentication key for url api endpoint
+      --url=URL                                 url api endpoint
+      --slack_key=SLACK_KEY                     slack token
+      --width                                   calculate & plot width histogram
+      --prune                                   prune confirmed transactions
+      
+"""
+
 import time
 import sys
+
+from docopt import docopt
 
 from tangle import tangle
 
 
-def main(path,resolution,auth_key,api_url,slack_key):
-    t = tangle(path,resolution,auth_key,api_url,slack_key)
+def main(config_map_global):
+    t = tangle(config_map_global)
 
     while True:
         t.incremental_read()
@@ -14,25 +33,5 @@ def main(path,resolution,auth_key,api_url,slack_key):
 
 
 if __name__ == '__main__':
-
-    if len(sys.argv) <3:
-        print 'usage: ctps.py [path_to_export] [sample_interval] (auth_key) (url) (slack_key)'
-        exit(1)
-
-    if len(sys.argv) <4:
-        auth_key = None
-        api_url = None
-        slack_key = None
-    elif len(sys.argv) <5:
-        auth_key = sys.argv[3]
-        api_url = None
-        slack_key = None
-    else:
-        auth_key = sys.argv[3]
-        api_url = sys.argv[4]
-        slack_key = sys.argv[5]
-
-
-
-
-    main(sys.argv[1],sys.argv[2],auth_key,api_url,slack_key)
+    config_map_global = docopt(__doc__)
+    main(config_map_global)

@@ -9,13 +9,15 @@ import data
 MOVING_AVG_WINDOW = 10 * 60 * 1000 * 1000
 class analytics:
 
-    def __init__(self,tangle):
+    def __init__(self,tangle,do_width):
         self.tangle = tangle
         self.data = data.data()
         self.counter = 0
 
         self.last_slack_broadcast = 0
         self.slack_broadcast_threshold = 10 * 60 * 1000 * 1000
+
+        self.do_width = do_width
         
     def analyze(self):
         self.mark_height()
@@ -23,7 +25,9 @@ class analytics:
         self.add_stats()
         self.broadcast_data()
         self.print_stats()
-        self.calc_width()
+
+        if self.do_width:
+            self.calc_width()
 
 
     def add_stats(self):

@@ -11,22 +11,21 @@ import analytics
 from transaction import transaction
 import api
 
-PRUNE = False
 MARK_AS_START = 0
 
 
 class tangle:
 
 
-    def __init__(self,path,resolution,auth_key,api_url,slack_key):
+    def __init__(self,config_map_global):
 
         #filesystem
-        self.directory = path
+        self.directory = config_map_global['--export_folder']
         self.output_short = './table.out'
         self.output_full  = './table.full'
 
         #parser
-        self.resolution = int(resolution)
+        self.resolution = int(config_map_global['--interval'])
         self.res_ns = self.resolution * 1000* 1000
         self.prev_timestamp = 0
 
@@ -35,14 +34,14 @@ class tangle:
         self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
         self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
         self.first = []
-        self.prune = PRUNE
+        self.prune = config_map_global['--prune']
         self.milestones = {}
         self.latest_milestone = 0
         self.milestone_count = 0
         self.pruned_tx = 0
 
         #analytics
-        self.analytics = analytics.analytics(self)
+        self.analytics = analytics.analytics(self,config_map_global['--width'])
 
 
         #api
@@ -51,9 +50,9 @@ class tangle:
         self.prev_print = 0
         self.lines_to_show = 10
 
-        self.auth_key = auth_key
-        self.api_url = api_url
-        self.slack_key = slack_key
+        self.auth_key = config_map_global['--auth_key']
+        self.api_url = config_map_global['--url']
+        self.slack_key = config_map_global['--slack_key']
 
 
 
