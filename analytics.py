@@ -120,9 +120,9 @@ class analytics:
 
         remove_milestones = [self.tangle.milestones.pop(m) for m in milestones_to_remove]
 
-        if self.tangle.prune:
-            tx_to_prune_unique = list(set(tx_to_prune))
-            remove_transactions = [self.tangle.graph.remove_node(p) for p in tx_to_prune_unique]
+        tx_to_prune_unique = list(set(tx_to_prune))
+        if self.tangle.prune and len(tx_to_prune_unique) > 30000:
+            self.tangle.graph.remove_nodes_from(tx_to_prune_unique)
             self.tangle.pruned_tx += len(tx_to_prune_unique)
 
             # print "pruning:",len(tx_to_prune_unique)
