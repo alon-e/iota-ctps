@@ -45,7 +45,6 @@ class tangle:
         #analytics
         self.analytics = analytics.analytics(self,config_map_global['--width'])
 
-
         #api
         self.milestone_to_broadcast_after = 0
         if os.path.isfile("milestone_to_broadcast_after.index"):
