@@ -42,7 +42,7 @@ class analytics:
 
 
     def add_stats(self):
-        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = c_rate = 0
+        num_txs = num_ctxs = tps = ctps = width = avg_c_t = alltime_avg_tps = alltime_avg_ctps = c_rate = 0
 
         # total tx:
         # count num of nodes in graph
@@ -83,8 +83,8 @@ class analytics:
             delta_ctxs = num_ctxs - self.data.numCtxs[self.data.last_index() - window_samples]
             delta_txs = num_txs - self.data.numTxs[self.data.last_index() - window_samples]
 
-            avg_tps = delta_txs / float((window_samples + 1) * self.tangle.resolution)
-            avg_ctps = delta_ctxs / float((window_samples +1) * self.tangle.resolution)
+            alltime_avg_tps = num_txs / float(self.data.last_index() * self.tangle.resolution)
+            alltime_avg_ctps = num_ctxs / float(self.data.last_index() * self.tangle.resolution)
 
             c_rate = delta_ctxs / (delta_txs * 1.0)
 
@@ -99,8 +99,8 @@ class analytics:
                          '{:.1f}'.format(ctps),
                          width,
                          avg_c_t,
-                         '{:.1f}'.format(avg_tps),
-                         '{:.1f}'.format(avg_ctps))
+                         '{:.1f}'.format(alltime_avg_tps),
+                         '{:.1f}'.format(alltime_avg_ctps))
 
 
 
@@ -174,7 +174,10 @@ class analytics:
             print res
 
         t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
-        slack_string = "TESTNET: {}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} milestones".format(
+        slack_string = ''
+        if self.tangle.testnet:
+            slack_string = 'TESTNET: '
+        slack_string += "{}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} milestones".format(
             t,
             json['numCtxs'],
             json['numTxs'],

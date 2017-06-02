@@ -5,6 +5,7 @@
   Options:
       -h --help                                 show this help message and exit
       --version                                 show version and exit
+      --testnet                                 sets Coordinator address to testnet Coo
       -e DIR --export_folder=DIR                export folder
       -i INTERVAL --interval=INTERVAL           sampling interval [default: 30]
       --auth_key=AUTH_KEY                       authentication key for url api endpoint

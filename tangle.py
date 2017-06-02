@@ -31,7 +31,12 @@ class tangle:
 
         #graph
         self.graph = nx.MultiDiGraph()
-        self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
+        if (config_map_global['--testnet']):
+            self.COOR = 'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
+            self.testnet = True
+        else:
+            self.COOR = 'KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU'
+            self.testnet = False
         self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
         self.first = []
         self.prune = config_map_global['--prune']
