@@ -53,17 +53,17 @@ class analytics:
         Cnodes = filter(lambda (n, d): (d.has_key('confirmed') and d['confirmed'] == True), self.tangle.graph.nodes(data=True))
         num_ctxs = self.tangle.pruned_tx + len(Cnodes)
 
-        if self.counter > 0:
-            # TPS
-            prev_num_tx = self.data.numTxs[self.data.last_index()]
-            tps = (num_txs - prev_num_tx) / (self.tangle.resolution * 1.0)
-            # CTPS
-            prev_num_ctx = self.data.numCtxs[self.data.last_index()]
-
-            if num_ctxs == 0:
-                num_ctxs = prev_num_ctx
-
-            ctps = (num_ctxs - prev_num_ctx) / (self.tangle.resolution * 1.0)
+        # if self.counter > 0:
+        #     # TPS
+        #     prev_num_tx = self.data.numTxs[self.data.last_index()]
+        #     tps = (num_txs - prev_num_tx) / (self.tangle.resolution * 1.0)
+        #     # CTPS
+        #     prev_num_ctx = self.data.numCtxs[self.data.last_index()]
+        #
+        #     if num_ctxs == 0:
+        #         num_ctxs = prev_num_ctx
+        #
+        #     ctps = (num_ctxs - prev_num_ctx) / (self.tangle.resolution * 1.0)
 
         # Tangle Width
         # count all tx in given height
@@ -82,6 +82,10 @@ class analytics:
 
             delta_ctxs = num_ctxs - self.data.numCtxs[self.data.last_index() - window_samples]
             delta_txs = num_txs - self.data.numTxs[self.data.last_index() - window_samples]
+
+            #10 minutes  avg tps
+            tps = delta_txs / float((window_samples + 1) * self.tangle.resolution)
+            ctps = delta_ctxs / float((window_samples + 1) * self.tangle.resolution)
 
             alltime_avg_tps = num_txs / float(self.data.last_index() * self.tangle.resolution)
             alltime_avg_ctps = num_ctxs / float(self.data.last_index() * self.tangle.resolution)
@@ -182,8 +186,8 @@ class analytics:
             json['numCtxs'],
             json['numTxs'],
             json['cRate'],
-            data.avgTps[index],
-            data.avgCtps[index],
+            data.tps[index],
+            data.ctps[index],
             self.tangle.latest_milestone_index)
         # send slack only every X time
         if (  self.tangle.prev_timestamp > self.last_slack_broadcast + self.slack_broadcast_threshold):
