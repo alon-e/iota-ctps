@@ -10,7 +10,7 @@ import data
 MOVING_AVG_WINDOW = 10 * 60 * 1000 * 1000
 class analytics:
 
-    def __init__(self,tangle,do_width):
+    def __init__(self,tangle,do_width,do_poisson):
         self.tangle = tangle
         self.data = data.data()
         self.counter = 0
@@ -19,6 +19,10 @@ class analytics:
         self.slack_broadcast_threshold = 10 * 60 * 1000 * 1000
 
         self.do_width = do_width
+        self.do_poisson = do_poisson
+
+        self.confirmed = set()
+
 
     def analyze(self):
         if self.do_width:
@@ -39,6 +43,12 @@ class analytics:
                 self.calc_width()
         except:
             pass
+        try:
+            if self.do_poisson:
+                self.calc_confirmation_time()
+        except:
+            pass
+
 
 
     def add_stats(self):
@@ -71,7 +81,13 @@ class analytics:
 
 
         # Average Confirmation Time
-        # TODO
+        if self.confirmed:
+            confirmed_times = [self.tangle.graph.node[k]['confirmationTime'] for k in self.confirmed]
+            avg_c_t = sorted(confirmed_times)[len(self.confirmed)/2 + len(self.confirmed) % 2 - 1]
+            avg_c_t = time.strftime('%H:%M:%S', time.gmtime(avg_c_t))
+        elif self.counter > 0:
+            avg_c_t = self.data.avgCTime[self.data.last_index()]
+
 
         # Confirmation rate
         # moving avg
@@ -133,23 +149,27 @@ class analytics:
 
 
     def mark_milestone_descendants_confirmed(self):
-        descendants = []
+        self.confirmed = set()
         NCnodesIter = []
         NCnodes = filter(lambda (n, d): (not d.has_key('confirmed') or (d.has_key('confirmed') and d['confirmed'] == False)),self.tangle.graph.nodes(data=True))
         for n,d in NCnodes:
             NCnodesIter.append(n)
         NCGraph = self.tangle.graph.subgraph(NCnodesIter)
 
-        for milestone in self.tangle.milestones:
+        for milestone in sorted(self.tangle.milestones, key=self.tangle.milestones.get):
             try:
-                descendants.append(nx.descendants(NCGraph, milestone))
+                descendants = nx.descendants(NCGraph, milestone)
+                if descendants:
+                    milestone_index = self.tangle.milestones.get(milestone)
+                    milestone_timestamp = self.tangle.graph.node[milestone]['timestamp']
+                    for d in descendants:
+                        if self.tangle.graph.node[d].has_key('confirmed') and not self.tangle.graph.node[d]['confirmed']:
+                            self.confirmed.add(d)
+                            self.tangle.graph.node[d]['confirmed'] = True
+                            self.tangle.graph.node[d]['confirmationTime'] = milestone_timestamp - self.tangle.graph.node[d]['timestamp']
+                            self.tangle.graph.node[d]['confirmingMilestone'] = milestone_index
             except:
                 print "milestone missing"
-
-        flatten = [item for sublist in descendants for item in sublist]
-        flatten = list(set(flatten))
-        for f in flatten:
-            self.tangle.graph.node[f]['confirmed'] = True
 
         self.prune_confirmed_transactions()
 
@@ -362,6 +382,18 @@ class analytics:
         for h in hops_list:
             self.tangle.graph.node[h]['height'] = hops
             hops -= 1
+
+    def calc_confirmation_time(self):
+        conf_times = []
+        conf_index = []
+        for n in self.tangle.graph.nodes():
+            if self.tangle.graph.node[n].has_key('confirmed') and self.tangle.graph.node[n]['confirmed']:
+                conf_times.append(str(self.tangle.graph.node[n]['confirmingMilestone']) + " " + str(self.tangle.graph.node[n]['confirmationTime']))
+
+        with open('conf_times.out', 'w+') as f:
+            for ct in conf_times:
+                f.write(str(ct) + '\n')
+        pass
 
 
 

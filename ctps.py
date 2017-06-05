@@ -12,6 +12,8 @@
       --url=URL                                 url api endpoint
       --slack_key=SLACK_KEY                     slack token
       --width                                   calculate & plot width histogram
+      --poisson                                 calculate & plot confirmation time distribution
+
       --prune                                   prune confirmed transactions
       
 """

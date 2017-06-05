@@ -48,7 +48,7 @@ class tangle:
         self.pruned_tx = 0
 
         #analytics
-        self.analytics = analytics.analytics(self,config_map_global['--width'])
+        self.analytics = analytics.analytics(self,config_map_global['--width'],config_map_global['--poisson'])
 
         #api
         self.milestone_to_broadcast_after = 0
@@ -83,7 +83,7 @@ class tangle:
             self.graph.node[tx.hash]['index'] = index
 
             self.latest_milestone = tx.hash
-            self.milestones[tx.hash] = 1
+            self.milestones[tx.hash] = index
             if self.latest_milestone_index < index:
                 self.latest_milestone_index = index
             self.milestone_count +=1
