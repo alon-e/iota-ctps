@@ -1,3 +1,4 @@
+import math
 import networkx as nx
 import time
 
@@ -8,6 +9,21 @@ import api
 import data
 
 MOVING_AVG_WINDOW = 10 * 60 * 1000 * 1000
+
+
+def get_poisson_peak(confirmed_times):
+    #return sorted(confirmed_times)[len(confirmed_times) / 2 + len(confirmed_times) % 2 - 1]
+    return int(sum(confirmed_times)/len(confirmed_times))
+    # if len(confirmed_times) == 1:
+    #     return confirmed_times[0]
+    # t_max = max(confirmed_times) + 1
+    # bins = len(confirmed_times)
+    # bin_size = t_max/float(bins)
+    # buckets = [0 for n in range(bins)]
+    # for t in confirmed_times:
+    #     buckets[int(math.floor(t/bin_size))] += 1
+    #return int(math.floor(buckets.index(max(buckets))*bin_size + bin_size/2))
+
 class analytics:
 
     def __init__(self,tangle,do_width,do_poisson):
@@ -83,7 +99,7 @@ class analytics:
         # Average Confirmation Time
         if self.confirmed:
             confirmed_times = [self.tangle.graph.node[k]['confirmationTime'] for k in self.confirmed]
-            avg_c_t = sorted(confirmed_times)[len(self.confirmed)/2 + len(self.confirmed) % 2 - 1]
+            avg_c_t = get_poisson_peak(confirmed_times)
             avg_c_t = time.strftime('%H:%M:%S', time.gmtime(avg_c_t))
         elif self.counter > 0:
             avg_c_t = self.data.avgCTime[self.data.last_index()]
