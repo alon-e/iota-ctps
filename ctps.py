@@ -1,290 +1,40 @@
-import os
+"""Usage:
+  ctps.py [-e DIR] [-i INTERVAL] [options]
 
-import networkx as nx
+
+  Options:
+      -h --help                                 show this help message and exit
+      --version                                 show version and exit
+      --testnet                                 sets Coordinator address to testnet Coo
+      -e DIR --export_folder=DIR                export folder
+      -i INTERVAL --interval=INTERVAL           sampling interval [default: 30]
+      --auth_key=AUTH_KEY                       authentication key for url api endpoint
+      --url=URL                                 url api endpoint
+      --slack_key=SLACK_KEY                     slack token
+      --width                                   calculate & plot width histogram
+      --poisson                                 calculate & plot confirmation time distribution
+
+      --prune                                   prune confirmed transactions
+      
+"""
+
 import time
-
 import sys
-from terminaltables import AsciiTable
 
-import urllib2
-import json
+from docopt import docopt
 
+from tangle import tangle
 
-PRUNE = False
-TIMEOUT = 7
 
-def API(request,auth,url):
+def main(config_map_global):
+    t = tangle(config_map_global)
 
-    stringified = json.dumps(request)
-    headers = {'content-type': 'application/json', 'Authorization': auth}
-
-    try:
-        request = urllib2.Request(url=url, data=stringified, headers=headers)
-        returnData = urllib2.urlopen(request,timeout=TIMEOUT).read()
-    except:
-        print url, "Timeout!"
-        print '\n    ' + repr(sys.exc_info())
-        return
-
-    response = json.loads(returnData)
-    return response
-
-
-
-
-class transaction:
-    def __init__(self,tryte_string, hash_string):
-        self.hash = hash_string
-        #self.signature_message_fragment = tryte_string[0:2187]
-        self.address = tryte_string[2187:2268]
-        self.value = tryte_string[2268:2295]
-        #self.tag = tryte_string[2295:2322]
-        self.timestamp = tryte_string[2322:2331]
-        #self.current_index = tryte_string[2331:2340]
-        #self.last_index = tryte_string[2340:2349]
-        self.bundle_hash = tryte_string[2349:2430]
-        self.trunk_transaction_hash = tryte_string[2430:2511]
-        self.branch_transaction_hash = tryte_string[2511:2592]
-        #self.nonce = tryte_string[2592:2673]
-
-class tangle:
-
-
-    def __init__(self,path,resolution,auth_key,api_url):
-
-        self.directory = path
-        self.output = './table.out'
-        self.graph = nx.MultiDiGraph()
-        self.resolution = int(resolution)
-        self.res_ns = self.resolution * 1000 * 1000
-        self.prev_timestamp = 0
-
-        self.prev_print = 0
-        self.lines_to_show = 10
-        self.data = []
-        self.counter = 0
-        self.milestones = {}
-
-        self.COOR =      'XNZBYAST9BETSDNOVQKKTBECYIPMF9IPOZRWUPFQGVH9HJW9NDSQVIPVBWU9YKECRYGDSJXYMZGHZDXCA'
-        self.all_nines = '999999999999999999999999999999999999999999999999999999999999999999999999999999999'
-
-        self.pruned_tx = 0
-
-        self.broadcast_max_tps = 0
-        self.broadcast_max_ctps = 0
-
-        self.auth_key = auth_key
-        self.api_url = api_url
-
-
-    def add_tx_to_tangle(self, tx):
-
-        self.graph.add_node(tx.hash, tx=tx, confirmed=False)
-        self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
-        self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
-
-        if tx.address == self.COOR:
-            self.milestones[tx.hash] = 1
-            #self.graph.node[tx.hash]['confirmed'] = True
-
-            #self.mark_descendants_confirmed(tx.hash)
-
-
-    def incremental_read(self):
-
-        #read files in dir
-        for file in sorted(os.listdir(self.directory)):
-            # for each file
-            try:
-                with open(self.directory + file) as f:
-                    timestamp = int(file.split('.')[0])
-
-                    #read only newer files
-                    if self.prev_timestamp < timestamp:
-
-                        hash = f.readline().strip('\r\n')
-                        trytes = f.readline().strip('\r\n')
-                        neighbor = f.readline().strip('\r\n')
-
-                        #parse fields
-                        tx = transaction(trytes,hash)
-
-                        #add to graph
-                        self.add_tx_to_tangle(tx)
-
-                        #stats:
-                        if (self.prev_timestamp/self.res_ns < timestamp/self.res_ns):
-                            print 'reading',file,'...'
-                            self.prev_timestamp = timestamp
-                            self.add_stats()
-            except:
-                pass
-
-
-    def print_stats(self):
-        table_data = [['timestamp','Total Tx.', 'Confirmed Tx.', 'Conf. rate','TPS', 'CTPS', 'Tangle width', 'avg. confirmation time', 'all-time avg. TPS', 'all-time avg. CTPS']]
-        for (c,d) in enumerate(self.data):
-            if c>self.prev_print - self.lines_to_show:
-                self.prev_print = c
-                table_data.append(d)  # created needs +2 for genesis
-
-        table = AsciiTable(table_data)
-        #print(table.table)
-
-        with open(self.output, 'w+') as f:
-            f.write(table.table)
-
-    def add_stats(self):
-
-        num_txs = num_ctxs = tps = ctps = width = avg_c_t = avg_tps = avg_ctps = 0
-
-        # total tx:
-        # count num of nodes in graph
-        num_txs = self.pruned_tx + self.graph.number_of_nodes()
-
-
-        self.mark_milestone_descendants_confirmed()
-
-        # confirmed tx:
-        # count all descendants milestones
-        Cnodes = filter(lambda (n, d): (d.has_key('confirmed') and d['confirmed'] == True), self.graph.nodes(data=True))
-        num_ctxs = self.pruned_tx + len(Cnodes)
-
-
-        if self.counter > 0:
-            # TPS
-            prev_num_tx = self.data[self.counter - 1][1]
-            tps = (num_txs - prev_num_tx) / (self.resolution * 1.0)
-            avg_tps = num_txs/(self.counter * (self.resolution * 1.0))
-            # CTPS
-            prev_num_ctx = self.data[self.counter - 1][2]
-
-            if num_ctxs == 0:
-                num_ctxs = prev_num_ctx
-
-            ctps = (num_ctxs - prev_num_ctx) / (self.resolution * 1.0)
-            avg_ctps = num_ctxs / (self.counter * (self.resolution * 1.0))
-
-        # Tangle Width
-        # count all tx in given height
-        #TODO
-
-        # Average Confirmation Time
-        # TODO
-
-
-        self.counter +=1
-        self.data.append([self.prev_timestamp, num_txs, num_ctxs, '{:.1%}'.format(num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
-        self.broadcast_data([self.prev_timestamp, num_txs, num_ctxs, '{:.1f}'.format(100 * num_ctxs / (num_txs * 1.0)), '{:.1f}'.format(tps), '{:.1f}'.format(ctps),width, avg_c_t, '{:.1f}'.format(avg_tps), '{:.1f}'.format(avg_ctps)])
-
-
-    def prune_confirmed_transactions(self):
-        milestones_to_remove = []
-        tx_to_prune = []
-        for milestone in self.milestones:
-            if self.graph.node[milestone].has_key('confirmed') and self.graph.node[milestone]['confirmed']:
-                milestones_to_remove.append(milestone)
-                to_prune = nx.descendants(self.graph, milestone)
-                for p in to_prune:
-                    tx_to_prune.append(p)
-
-        remove_milestones = [self.milestones.pop(m) for m in milestones_to_remove]
-
-        if PRUNE:
-            tx_to_prune_unique = list(set(tx_to_prune))
-            remove_transactions = [self.graph.remove_node(p) for p in tx_to_prune_unique]
-            self.pruned_tx += len(tx_to_prune_unique)
-
-        #print "pruning:",len(tx_to_prune_unique)
-
-    def mark_milestone_descendants_confirmed(self):
-
-
-        descendants = []
-        for milestone in self.milestones:
-            try:
-                descendants.append(nx.descendants(self.graph, milestone))
-            except:
-                print "milestone missing"
-
-        flatten = [item for sublist in descendants for item in sublist]
-        flatten = list(set(flatten))
-        for f in flatten:
-            self.graph.node[f]['confirmed'] = True
-
-        self.prune_confirmed_transactions()
-
-
-    def broadcast_data(self, data):
-        if self.broadcast_max_tps < float(data[4]):
-            self.broadcast_max_tps = float(data[4])
-        if self.broadcast_max_ctps < float(data[5]):
-            self.broadcast_max_ctps = float(data[5])
-
-
-        json = {
-            'ctps': data[5],
-            'tps': data[4],
-            'numTxs': data[1],
-            'numCtxs': data[2],
-            'cRate': data[3],
-            'maxCtps': self.broadcast_max_ctps,
-            'maxTps': self.broadcast_max_tps
-
-        }
-        with open('feed.out', 'w+') as f:
-            f.write(str(json))
-        if self.auth_key:
-            res = API(json,self.auth_key,api_url)
-            print res
-        pass
-
-    def getTips(self):
-        # this was too slow - solution: amortize the tip collection
-        indeg = self.graph.in_degree()
-        tip_index = [n for n in indeg if indeg[n] == 0]
-
-        with open('tips.out', 'w+') as f:
-            for tip in tip_index:
-                f.write(str(tip) + '\n')
-        pass
-
-    def getMissingTx(self):
-        # this was too slow - solution: amortize the tip collection
-        outdeg = self.graph.out_degree()
-        missingTx_index = [n for n in outdeg if outdeg[n] == 0]
-
-        with open('missingTx.out', 'w+') as f:
-            for missingTx in missingTx_index:
-                f.write(str(missingTx) + '\n')
-        pass
-
-
-def main(path,resolution,auth_key,api_url):
-    t = tangle(path,resolution,auth_key,api_url)
     while True:
         t.incremental_read()
         t.print_stats()
-        t.getTips()
-        t.getMissingTx()
         time.sleep(t.resolution)
 
+
 if __name__ == '__main__':
-
-    if len(sys.argv) <3:
-        print 'usage: ctps.py [path_to_export] [sample_interval] (auth_key) (url)'
-        exit(1)
-
-    if len(sys.argv) <4:
-        auth_key = None
-        api_url = None
-    elif len(sys.argv) <5:
-        auth_key = sys.argv[3]
-    else:
-        auth_key = sys.argv[3]
-        api_url = sys.argv[4]
-
-
-
-
-    main(sys.argv[1],sys.argv[2],auth_key,api_url)
+    config_map_global = docopt(__doc__)
+    main(config_map_global)
