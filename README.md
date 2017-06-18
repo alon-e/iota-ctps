@@ -1,9 +1,22 @@
 # iota-ctps
 This tool is used to analyze IOTA tangle.
 
-parsing transaction files exported from IRI, iota-ctps calculate a wide set of metrics
+parsing transaction files exported from IRI, iota-ctps calculates a wide set of metrics.
 
-#####Live feed:
+### Install:
+```
+git clone ...
+cd iota-ctps
+sudo python setup.py install
+```
+you may also need to run:
+```
+sudo pip install piota
+```
+if you are missing `ffi` run - `sudo apt-get install libffi libffi-dev`
+
+### Features:
+##### Live feed:
 historical & current data is accumulated:
 ```
 'timestamp', 
@@ -20,7 +33,7 @@ historical & current data is accumulated:
 'max CTPS'
 ```
 
-#####Tangle width:
+##### Tangle width:
 Tangle width can be plotted, together with confirmed transactions.
 
 ```
@@ -50,9 +63,9 @@ milestone: # confirmed: * unconfirmed_non_tips: = unconfirmed_tips: +
 
 ```
 
-#####Push feed to API end-point and slack channel.
+##### Push feed to API end-point and slack channel.
 
-#####Export exact confirmation time for all transactions. 
+##### Export exact confirmation time for all transactions. 
 
 -------
 
