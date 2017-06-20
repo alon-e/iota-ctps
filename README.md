@@ -11,7 +11,7 @@ sudo python setup.py install
 ```
 you may also need to run:
 ```
-sudo pip install piota
+sudo pip install pyota
 ```
 if you are missing `ffi` run - `sudo apt-get install libffi libffi-dev`
 
