@@ -367,7 +367,7 @@ class analytics:
         for n in self.tangle.graph.nodes():
             if self.tangle.graph.node[n].has_key('height'):
                 continue
-            if n == self.tangle.all_nines:
+            if n == self.tangle.all_nines or n in self.tangle.first:
                 self.tangle.graph.node[n]['height'] = 0
                 continue
             self.mark_height_for_node(n)

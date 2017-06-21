@@ -1,5 +1,5 @@
 """Usage:
-  ctps.py [-e DIR] [-i INTERVAL] [options]
+  ctps.py (-e DIR | -s PORT) [-i INTERVAL] [options]
 
 
   Options:
@@ -7,6 +7,7 @@
       --version                                 show version and exit
       --testnet                                 sets Coordinator address to testnet Coo
       -e DIR --export_folder=DIR                export folder
+      -s PORT --subscribe=PORT              subscribe to IRI zmq publications
       -i INTERVAL --interval=INTERVAL           sampling interval [default: 30]
       --auth_key=AUTH_KEY                       authentication key for url api endpoint
       --url=URL                                 url api endpoint
@@ -29,10 +30,13 @@ from tangle import tangle
 def main(config_map_global):
     t = tangle(config_map_global)
 
-    while True:
-        t.incremental_read()
-        t.print_stats()
-        time.sleep(t.resolution)
+    if config_map_global["--export_folder"]:
+        while True:
+            t.incremental_read()
+            t.print_stats()
+            time.sleep(t.resolution)
+    if config_map_global["--subscribe"]:
+        t.continuous_read()
 
 
 if __name__ == '__main__':

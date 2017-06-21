@@ -3,6 +3,7 @@ import os
 import networkx as nx
 import time
 
+import zmq
 from terminaltables import AsciiTable
 
 import iota
@@ -23,6 +24,10 @@ class tangle:
         self.directory = config_map_global['--export_folder']
         self.output_short = './table.out'
         self.output_full  = './table.full'
+
+        #zmq
+        self.subscribe = config_map_global['--subscribe']
+        self.topic = "TX"
 
         #parser
         self.resolution = int(config_map_global['--interval'])
@@ -93,7 +98,7 @@ class tangle:
 
         #read files in dir
         for file in sorted(os.listdir(self.directory)):
-            # try:
+            try:
                 # for each file
                 with open(self.directory + file) as f:
                     timestamp = int(file.split('.')[0])
@@ -121,9 +126,42 @@ class tangle:
                             print 'reading',file,'...'
                             self.prev_timestamp = timestamp
                             self.analytics.analyze()
-            # except:
-            #     pass
+            except:
+                pass
 
     def print_stats(self):
         self.analytics.print_stats()
+
+    def continuous_read(self):
+        # connect to zmq
+        # Socket to talk to server
+        context = zmq.Context()
+        socket = context.socket(zmq.SUB)
+        socket.connect("tcp://localhost:%s" % self.subscribe)
+
+        # Subscribe to topic
+        topicfilter = self.topic
+        socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
+
+        # read feed continuously
+        while(True):
+            current_timestamp = time.time() * 1000 * 1000
+
+            #read & add transaction
+            string = socket.recv()
+            topic, hash, address, value, tag, timestamp, bundle, trunk, branch, trytes = string.split()
+            # parse fields
+            tx = transaction(trytes, hash)
+            # add to graph
+            self.add_tx_to_tangle(tx)
+
+            if len(self.first) < MARK_AS_START:
+                self.graph.node[tx.hash]["height"] = 0
+                self.first.append(tx.hash)
+
+            # if interval has past - analyze.
+            if (self.prev_timestamp + self.res_ns < current_timestamp ):
+                print 'reading', timestamp, '...'
+                self.prev_timestamp = current_timestamp
+                self.analytics.analyze()
 

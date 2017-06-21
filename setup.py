@@ -4,7 +4,7 @@ setup(
     name='iota-ctps',
     version='1.0',
     packages=[ '' ],
-    install_requires=['networkx', 'terminaltables', 'pyota', 'slackclient', 'docopt'],
+    install_requires=['networkx', 'terminaltables', 'pyota', 'slackclient', 'docopt', 'zmq'],
     url='',
     license='',
     author='alon-e',
