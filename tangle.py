@@ -149,16 +149,19 @@ class tangle:
 
             #read & add transaction
             string = socket.recv()
-            topic, hash, address, value, tag, timestamp, bundle, trunk, branch, trytes = string.split()
-            # parse fields
-            tx = transaction(trytes, hash)
-            # add to graph
-            self.add_tx_to_tangle(tx)
+            try:
+                topic, hash, address, value, tag, timestamp, bundle, trunk, branch, trytes = string.split()
+                # parse fields
+                tx = transaction(trytes, hash)
+                # add to graph
+                self.add_tx_to_tangle(tx)
 
-            if len(self.first) < MARK_AS_START:
-                self.graph.node[tx.hash]["height"] = 0
-                self.first.append(tx.hash)
-
+                if len(self.first) < MARK_AS_START:
+                    self.graph.node[tx.hash]["height"] = 0
+                    self.first.append(tx.hash)
+            except:
+                print "error:",string
+                pass
             # if interval has past - analyze.
             if (self.prev_timestamp + self.res_ns < current_timestamp ):
                 print 'reading', timestamp, '...'
