@@ -12,3 +12,16 @@ class transaction:
         self.trunk_transaction_hash = tryte_string[2430:2511]
         self.branch_transaction_hash = tryte_string[2511:2592]
         #self.nonce = tryte_string[2592:2673]
+    def __init__(self,hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch):
+        self.hash = hash
+        # self.signature_message_fragment = tryte_string[0:2187]
+        self.address = address
+        self.value = value
+        self.tag = tag
+        self.timestamp = timestamp
+        self.current_index = current_index
+        self.last_index = last_index
+        self.bundle_hash = bundle
+        self.trunk_transaction_hash = trunk
+        self.branch_transaction_hash = branch
+        # self.nonce = tryte_string[2592:2673]

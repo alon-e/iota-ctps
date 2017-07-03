@@ -78,7 +78,11 @@ class tangle:
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
-        timestamp = iota.int_from_trits(iota.TryteString(tx.timestamp).as_trits())
+        if self.subscribe:
+            timestamp = tx.timestamp
+        else:
+            timestamp = iota.int_from_trits(iota.TryteString(tx.timestamp).as_trits())
+
         self.graph.node[tx.hash]['timestamp'] = timestamp
 
         if tx.address == self.COOR:
@@ -150,9 +154,9 @@ class tangle:
             #read & add transaction
             string = socket.recv()
             try:
-                topic, hash, address, value, tag, timestamp, bundle, trunk, branch, trytes = string.split()
+                topic, hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch = string.split()
                 # parse fields
-                tx = transaction(trytes, hash)
+                tx = transaction(hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch)
                 # add to graph
                 self.add_tx_to_tangle(tx)
 
