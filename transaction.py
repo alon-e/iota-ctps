@@ -18,9 +18,9 @@ class transaction:
         self.address = address
         self.value = value
         self.tag = tag
-        self.timestamp = timestamp
-        self.current_index = current_index
-        self.last_index = last_index
+        self.timestamp = int(timestamp)
+        self.current_index = int(current_index)
+        self.last_index = int(last_index)
         self.bundle_hash = bundle
         self.trunk_transaction_hash = trunk
         self.branch_transaction_hash = branch
