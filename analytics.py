@@ -100,7 +100,10 @@ class analytics:
         if self.confirmed:
             confirmed_times = [self.tangle.graph.node[k]['confirmationTime'] for k in self.confirmed]
             avg_c_t = get_poisson_peak(confirmed_times)
-            avg_c_t = time.strftime('%H:%M:%S', time.gmtime(avg_c_t))
+            try:
+                avg_c_t = time.strftime('%H:%M:%S', time.gmtime(avg_c_t))
+            except:
+                pass
         elif self.counter > 0:
             avg_c_t = self.data.avgCTime[self.data.last_index()]
 
