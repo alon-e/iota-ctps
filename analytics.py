@@ -72,7 +72,8 @@ class analytics:
 
         # total tx:
         # count num of nodes in graph
-        num_txs = self.tangle.pruned_tx + self.tangle.graph.number_of_nodes()
+        Tnodes = filter(lambda (n, d): (d.has_key('confirmed')), self.tangle.graph.nodes(data=True))
+        num_txs = self.tangle.pruned_tx + len(Tnodes)
 
         # confirmed tx:
         # count all descendants milestones
