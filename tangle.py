@@ -78,12 +78,20 @@ class tangle:
         self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
         self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
 
-        if self.subscribe:
-            timestamp = tx.timestamp
-        else:
-            timestamp = iota.int_from_trits(iota.TryteString(tx.timestamp).as_trits())
+        timestamp = tx.timestamp
+        value = tx.value
+        current_index = tx.current_index
+        if not self.subscribe:
+            timestamp = iota.int_from_trits(iota.TryteString(timestamp).as_trits())
+            value = iota.int_from_trits(iota.TryteString(value).as_trits())
+            current_index = iota.int_from_trits(iota.TryteString(current_index).as_trits())
 
         self.graph.node[tx.hash]['timestamp'] = timestamp
+        self.graph.node[tx.hash]['value'] = value
+        self.graph.node[tx.hash]['current_index'] = current_index
+
+        self.graph.node[tx.hash]['address'] = tx.address
+        self.graph.node[tx.hash]['bundle'] = tx.bundle_hash
 
         if tx.address == self.COOR:
             self.graph.node[tx.hash]['is_milestone'] = True
@@ -147,13 +155,15 @@ class tangle:
         topicfilter = self.topic
         socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
 
+
         # read feed continuously
         while(True):
             current_timestamp = time.time() * 1000 * 1000
 
             #read & add transaction
-            string = socket.recv()
+            string = ""
             try:
+                string = socket.recv()
                 topic, hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch = string.split()
                 # parse fields
                 tx = transaction(hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch)
@@ -168,7 +178,7 @@ class tangle:
                 pass
             # if interval has past - analyze.
             if (self.prev_timestamp + self.res_ns < current_timestamp ):
-                print 'reading', timestamp, '...'
+                print 'reading', int(current_timestamp), '...'
                 self.prev_timestamp = current_timestamp
                 self.analytics.analyze()
 

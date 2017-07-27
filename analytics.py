@@ -3,6 +3,8 @@ import networkx as nx
 import time
 
 import sys
+
+import webcolors
 from terminaltables import AsciiTable
 
 import api
@@ -258,6 +260,32 @@ class analytics:
         with open(self.tangle.output_full, 'w+') as f:
             f.write(AsciiTable(full_table_data).table)
         pass
+
+        # Tangle dot file
+        T = self.tangle.graph
+
+        for node in T.nodes():
+            if not 'tx' in T.node[node]:
+                continue
+            color = webcolors.rgb_to_hex((0,0xff,0)) if 'confirmed' in T.node[node] and T.node[node]['confirmed'] else webcolors.rgb_to_hex((0xff,0,0))
+            if 'is_milestone' in T.node[node]:
+                color = webcolors.rgb_to_hex((0, 0xff, 0xff))
+
+            if T.node[node]['value'] is not 0:
+                T.node[node]['shape'] = 'diamond'
+
+            if T.node[node]['current_index'] is 0:
+                T.node[node]['penwidth'] = 3
+
+            T.node[node]['style'] = 'filled'
+            T.node[node]['fillcolor'] = color
+            T.node[node]['label'] = node + " : " + str(T.node[node]['value']) + ''.join([ '\n'+str(k)+" = "+str(v) for k,v in T.node[node].items() if k is not 'tx' and k is not 'label'])
+
+        p = nx.drawing.nx_pydot.to_pydot(T)
+        print 'plotting: ' + 'graph' + '.dot'
+
+        p.write_raw('graph' + '.dot')
+        #p.write_pdf('graph.pdf', prog='dot')
 
     ###################################
     # WIDTH related
