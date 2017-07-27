@@ -7,7 +7,7 @@
       --version                                 show version and exit
       --testnet                                 sets Coordinator address to testnet Coo
       -e DIR --export_folder=DIR                export folder
-      -s PORT --subscribe=PORT              subscribe to IRI zmq publications
+      -s PORT --subscribe=PORT                  subscribe to IRI zmq publications
       -i INTERVAL --interval=INTERVAL           sampling interval [default: 30]
       --auth_key=AUTH_KEY                       authentication key for url api endpoint
       --url=URL                                 url api endpoint
