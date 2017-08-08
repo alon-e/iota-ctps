@@ -154,7 +154,7 @@ class tangle:
             #read & add transaction
             string = socket.recv()
             try:
-                topic, hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch = string.split()
+                topic, hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch, arrivalTime = string.split()
                 # parse fields
                 tx = transaction(hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch)
                 # add to graph
