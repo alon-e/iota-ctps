@@ -1,3 +1,4 @@
+import json
 import math
 import networkx as nx
 import time
@@ -198,23 +199,24 @@ class analytics:
 
         data = self.data
         index = self.data.last_index()
-        json = {
+        json_str = {
             'ctps': data.ctps[index],
             'tps':  data.tps[index],
             'numTxs': data.numTxs[index],
             'numCtxs': data.numCtxs[index],
             'cRate': data.cRate[index],
             'maxCtps': data.maxCtps[index],
-            'maxTps': data.maxTps[index]
-
+            'maxTps': data.maxTps[index],
+            'avgConfTime': data.avgCTime[index],
+            'latestMilestone': self.tangle.latest_milestone_index
         }
         #write feed to file
         with open('feed.out', 'w+') as f:
-            f.write(str(json))
+            f.write(json.dumps(json_str))
 
         #send json to api endpoint
         if self.tangle.auth_key and self.tangle.latest_milestone_index > self.tangle.milestone_to_broadcast_after:
-            res = api.API(json, self.tangle.auth_key, self.tangle.api_url)
+            res = api.API(json_str, self.tangle.auth_key, self.tangle.api_url)
             print res
 
         t = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(self.tangle.prev_timestamp / 1000 / 1000))
@@ -223,9 +225,9 @@ class analytics:
             slack_string = 'TESTNET: '
         slack_string += "{}: {} (of {}) confirmed transactions / {} Confirmation rate / TPS: {} CTPS: {} / {} milestones".format(
             t,
-            json['numCtxs'],
-            json['numTxs'],
-            json['cRate'],
+            json_str['numCtxs'],
+            json_str['numTxs'],
+            json_str['cRate'],
             data.tps[index],
             data.ctps[index],
             self.tangle.latest_milestone_index)
