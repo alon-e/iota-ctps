@@ -27,6 +27,7 @@ class tangle:
 
         #zmq
         self.subscribe = config_map_global['--subscribe']
+        self.host= config_map_global['--host']
         self.topic = "tx"
 
         #parser
@@ -74,9 +75,9 @@ class tangle:
 
     def add_tx_to_tangle(self, tx):
 
-        self.graph.add_node(tx.hash, tx=tx, confirmed=False, trunk=tx.trunk_transaction_hash)
-        self.graph.add_edge(tx.hash, tx.branch_transaction_hash)
-        self.graph.add_edge(tx.hash, tx.trunk_transaction_hash)
+        self.graph.add_node(tx.hash, tx=tx, confirmed=False, trunk=tx.trunk)
+        self.graph.add_edge(tx.hash, tx.branch)
+        self.graph.add_edge(tx.hash, tx.trunk)
 
         if self.subscribe:
             timestamp = tx.timestamp
@@ -116,7 +117,7 @@ class tangle:
                         #height = int(f.readline().strip('\r\n').split('Height: ')[1])
 
                         #parse fields
-                        tx = transaction(trytes,hash)
+                        tx = transaction.from_trytes(trytes,hash)
 
                         #add to graph
                         self.add_tx_to_tangle(tx)
@@ -141,7 +142,7 @@ class tangle:
         # Socket to talk to server
         context = zmq.Context()
         socket = context.socket(zmq.SUB)
-        socket.connect("tcp://localhost:%s" % self.subscribe)
+        socket.connect("tcp://%s:%s" % (self.host, self.subscribe))
 
         # Subscribe to topic
         topicfilter = self.topic
@@ -152,11 +153,10 @@ class tangle:
             current_timestamp = time.time() * 1000 * 1000
 
             #read & add transaction
-            string = socket.recv()
+            zmq_feed = socket.recv()
             try:
-                topic, hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch, arrivalTime = string.split()
                 # parse fields
-                tx = transaction(hash, address, value, tag, timestamp, current_index, last_index, bundle, trunk, branch)
+                tx = transaction.from_zmq(zmq_feed)
                 # add to graph
                 self.add_tx_to_tangle(tx)
 
@@ -164,11 +164,11 @@ class tangle:
                     self.graph.node[tx.hash]["height"] = 0
                     self.first.append(tx.hash)
             except:
-                print "error:",string
+                print "error:", zmq_feed
                 pass
             # if interval has past - analyze.
             if (self.prev_timestamp + self.res_ns < current_timestamp ):
-                print 'reading', timestamp, '...'
+                print 'reading', int(time.time()), '...'
                 self.prev_timestamp = current_timestamp
                 self.analytics.analyze()
 
