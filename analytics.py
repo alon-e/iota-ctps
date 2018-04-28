@@ -27,7 +27,7 @@ def get_poisson_peak(confirmed_times):
 
 class analytics:
 
-    def __init__(self,tangle,do_width,do_poisson):
+    def __init__(self, tangle, do_width, do_poisson, output_dir):
         self.tangle = tangle
         self.data = data.data()
         self.counter = 0
@@ -37,6 +37,7 @@ class analytics:
 
         self.do_width = do_width
         self.do_poisson = do_poisson
+        self.output_dir = output_dir
 
         self.confirmed = set()
 
@@ -211,7 +212,7 @@ class analytics:
             'latestMilestone': self.tangle.latest_milestone_index
         }
         #write feed to file
-        with open('feed.out', 'w+') as f:
+        with open(self.output_dir + '/feed.out', 'w+') as f:
             f.write(json.dumps(json_str))
 
         #send json to api endpoint
