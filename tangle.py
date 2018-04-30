@@ -28,7 +28,7 @@ class tangle:
         #zmq
         self.subscribe = config_map_global['--subscribe']
         self.host= config_map_global['--host']
-        self.topic = "tx"
+        self.topic = "tx "
 
         #parser
         self.resolution = int(config_map_global['--interval'])
