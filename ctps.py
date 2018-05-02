@@ -7,6 +7,7 @@
       --version                                 show version and exit
       --testnet                                 sets Coordinator address to testnet Coo
       -e DIR --export_folder=DIR                export folder
+      -o DIR --output_folder=DIR                output data to this folder [default: ./]
       -s PORT --subscribe=PORT                  subscribe to IRI zmq publications
       --host=HOST                               zmq host [default: localhost]
 

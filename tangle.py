@@ -22,8 +22,9 @@ class tangle:
 
         #filesystem
         self.directory = config_map_global['--export_folder']
-        self.output_short = './table.out'
-        self.output_full  = './table.full'
+        self.output_dir = config_map_global['--output_folder']
+        self.output_short = self.output_dir + '/table.out'
+        self.output_full  = self.output_dir + '/table.full'
 
         #zmq
         self.subscribe = config_map_global['--subscribe']
@@ -54,7 +55,10 @@ class tangle:
         self.pruned_tx = 0
 
         #analytics
-        self.analytics = analytics.analytics(self,config_map_global['--width'],config_map_global['--poisson'])
+        self.analytics = analytics.analytics(self,
+                                             config_map_global['--width'],
+                                             config_map_global['--poisson'],
+                                             config_map_global['--output_folder'])
 
         #api
         self.milestone_to_broadcast_after = 0
